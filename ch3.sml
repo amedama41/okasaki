@@ -320,5 +320,36 @@ struct
       * The complexity of toTree is O(log(n)).
       * The total complexity is n*O(1) + O(log(n)) = O(n).
       * *)
+
+(* Exercise 3.10 *)
+  fun lbalance (B,T(R,T(R,a,x,b),y,c),z,d) = T(R,T(B,a,x,b),y,T(B,c,z,d))
+    | lbalance (B,T(R,a,x,T(R,b,y,c)),z,d) = T(R,T(B,a,x,b),y,T(B,c,z,d))
+    | lbalance body = T body
+  fun rbalance (B,a,x,T(R,T(R,b,y,c),z,d)) = T(R,T(B,a,x,b),y,T(B,c,z,d))
+    | rbalance (B,a,x,T(R,b,y,T(R,c,z,d))) = T(R,T(B,a,x,b),y,T(B,c,z,d))
+    | rbalance body = T body
+  fun insert' (x, s) =
+    let
+      fun ins E = T (B, E, x, E)
+        | ins (s as T (color, a, y, b)) =
+        if Elem.lt (x, y) then lbalance (color, ins a, y, b)
+        else if Elem.lt (y, x) then rbalance (color, a, y, ins b)
+        else s
+      val T (_, a, y, b) = ins s
+      in T (B, a, y, b)
+    end
+  fun balance' (B,T(R,T(R,a,x,b),y,c),z,d) = T(R,T(B,a,x,b),y,T(B,c,z,d))
+    | balance' body = T body
+  fun insert'' (x, s) =
+    let
+      fun ins E = T (B, E, x, E)
+        | ins (s as T (color, a, y, b)) =
+        if Elem.lt (x, y) then balance' (color, ins a, y, b)
+        else if Elem.lt (y, x) then balance' (color, ins b, y, a)
+        else s
+      val T (_, a, y, b) = ins s
+      in T (B, a, y, b)
+    end
+
 end
 
