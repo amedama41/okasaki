@@ -83,7 +83,7 @@ struct
     | init (x::[], []) = empty
     | init (f, x::r) = checkr (f, r)
 end
-(** When  |f| = 1 and |r| = 0, cons decrements potential by 1 and needs 2 steps.
+(** When |f| = 1 and |r| = 0, cons decrements potential by 1 and needs 2 steps.
   * The amortized cost is 1.
   * Otherwise, When  |f| >= |r|, cons increments potential by 1, then the
   * amortized cost is 2.
@@ -100,5 +100,13 @@ end
   * is (1 + |r|) - (|r| - 1) = 2.
   *
   * snoc and init cost is same as cons and tail respectively.
+  * *)
+
+(** 5.3 Binomial Heap **)
+
+(* Exercise 5.2 *)
+(** Each tree in a heap is related to a credit. Let k the number of link,
+  * insert decrements credit by k and increments that by 1. Then the amortized
+  * cost of insert is 1 + k + 1 - k = 2.
   * *)
 
