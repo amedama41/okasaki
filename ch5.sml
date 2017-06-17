@@ -105,8 +105,24 @@ end
 (** 5.3 Binomial Heap **)
 
 (* Exercise 5.2 *)
-(** Each tree in a heap is related to a credit. Let k the number of link,
+(** Each tree in a heap is related to a credit. Let k be the number of link,
   * insert decrements credit by k and increments that by 1. Then the amortized
   * cost of insert is 1 + k + 1 - k = 2.
+  * *)
+
+(* Exercise 5.3 *)
+(** Let t1 be the number of trees in one heap to be merged, t2 the number of
+  * trees in another, and k the number of calls of link in the merge.
+  * The total potential of two heaps is t1 + t2, and the potential of merged
+  * heap is t1 + t2 - k.
+  * The amortized cost is log(n) + k + (t1 + t2 - k) - (t1 + t2) = log(n).
+  *
+  * Let t be the number of trees in a heap, r be the rank of tree with minimum
+  * value, and k be the number of calls of link in the deleteMin.
+  * The potential after deleteMin is (t - 1 + r - k), and in deleteMin findMin
+  * needs t steps and merge needs r + k steps.
+  * Then the amortized cost is
+  *     t + r + k + (t - 1 + r - k) - t = t + 2r = log(n) + 2r.
+  * Because 0 <= r <= log(n + 1), the amortized cost of deleteMin is O(log(n)).
   * *)
 
