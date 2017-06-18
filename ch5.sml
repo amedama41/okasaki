@@ -126,3 +126,72 @@ end
   * Because 0 <= r <= log(n + 1), the amortized cost of deleteMin is O(log(n)).
   * *)
 
+(** 5.4 Splay Tree **)
+
+functor SplayHeap (Element : ORDERED) : HEAP =
+struct
+  structure Elem = Element
+
+  datatype Heap = E | T of Heap * Elem.T * Heap
+
+  val empty = E
+  fun isEmpty E = true | isEmpty _ = false
+
+  fun partition (pivot, E) = (E, E)
+    | partition (pivot, T (a, x, b)) =
+    if x <= pivot then
+      case b of
+           E => (T (a, x, E), E)
+         | T (b1, y, b2) =>
+             if y <= pivot then
+               let val (small, big) = partition (pivot, b2)
+               in (T (T (a, x, b1), y, small), big) end
+             else
+               let val (samll, big) = partition (pivot, b1)
+               in (T (a, x, small), T (big, y, b2)) end
+    else
+      case a of
+           E => (E, T (E, x, b))
+         | T (a1, y, a2) =>
+             if y <= pivot then
+               let val (small, big) = partition (pivot, a2)
+               in (T (a1, y, small), T (big, x, b)) end
+             else
+               let val (small, big) = partition (pivot, a1)
+               in (small, T (big, y, T (a2, x, b))) end
+
+  fun insert (x, t) = let val (a, b) = partition (x, t) in T (a, x, b) end
+  fun merge (E, t) = t
+    | merge (T (a, x, b), t) =
+    let val (ta, tb) = partition (x, t)
+    in T (merge (ta, a), x, merge (tb, b)) end
+
+  fun findMin E = raise EMPTY
+    | findMin (T (E, x, b)) = x
+    | findMin (T (a, x, b)) = findMin a
+  fun deleteMin E = raise EMPTY
+    | deleteMin (T (E, x, b)) = b
+    | deleteMin (T (T (E, x, b), y, c)) = T (b, y, c)
+    | deleteMin (T (T (a, x, b), y, c)) = T (deleteMin a, x, T (b, y, c))
+
+  fun bigger (pivot, E) = E
+    | bigger (pivot, T (a, x, b)) =
+    if x <= pivot then bigger (pivot, b)
+    else case a of
+              E => T (E, x, b)
+            | T (a1, y, a2) =>
+                if y <= pivot then T (bigger (pivot, a2), x, b)
+                else T (bigger (pivot, a1), y, T (a2, x, b))
+
+(* Exercise 5.4 *)
+  fun smaller (pivot, E) = E
+    | smaller (pivot, T (a, x, b)) =
+    if x > pivot then smaller (pivot, a)
+    else case b of
+              E => T (a, x, E)
+            | T (a1, y, a2) =>
+                if y > pivot then T (a, x, smaller (pivot, a1))
+                else T (T (a, x, a1), y, smaller (pivot, a2))
+
+end
+
