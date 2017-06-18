@@ -65,10 +65,9 @@ fun sort $ NIL = $ NIL
            | insert (x, s as $ CONS (y, s'))
       if x < y then $ CONS (x, s) else $ CONS (y, insert (x, s'))
     in insert (x, sort xs) end
-(** This insertion sort behaves as bubble sort.
-  * Each step compare with only the first sorted list element y,
-  * and comparison with the rest are delayed. So, the time of taking a element
-  * is O(n). But, because each step must compare n times, the total time is
-  * O(n^2), which is worse than eager evaluation version.
+(** Each insert compare with only the first sorted list element y, and
+  * comparison with the rest are delayed. When taking one element, the
+  * insert is called at most n times. Then the time of taking k element
+  * is O(kn).
   * *)
 
