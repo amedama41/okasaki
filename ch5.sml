@@ -212,3 +212,21 @@ end
   *     < 1 + 2φ(s)
   * *)
 
+(* Exercise 5.6 *)
+(** Let Α(t) be amortized cost of deleteMin, Γ(t) be real cost of deleteMin.
+  * Hypothesize Α(t) <= 1 + 2φ(t) = 1 + 2log(#t).
+  *
+  * Where deleteMin T (T (u, t, c), s, d) results in  T (u', t', T (c, s', d)),
+  * Α(s)
+  *     = Γ(s) + Φ(t') - Φ(s)
+  *     = 1 + Γ(u) + Φ(t') - Φ(s)
+  *     = 1 + Α(u) - Φ(u') + Φ(u) + Φ(t') - Φ(s)
+  *     = 1 + Α(u) - Φ(u') + Φ(u)
+  *         + φ(t') + Φ(u') + φ(s') + Φ(c) + Φ(d)
+  *         - (φ(s) + φ(t) + Φ(u) + Φ(c) + Φ(d))
+  *     = 1 + Α(u) + φ(t') - φ(t) + φ(s') - φ(s)
+  *     <= 2 + 2φ(u) + φ(s') - φ(s) + φ(t') - φ(t)
+  *     < 2 + φ(s') + φ(t')       (φ(s) > φ(u), φ(t) > φ(u))
+  *     < 1 + 2φ(s) = 1 + 2log(#t).
+  * *)
+
