@@ -230,3 +230,21 @@ end
   *     < 1 + 2φ(s) = 1 + 2log(#t).
   * *)
 
+(* Exercise 5.7 *)
+fun sort xs =
+let
+  fun listToHeap (h, []) = h
+    | listToHeap (h, x::xs) = listToHeap (SplayHeap.insert (x, h), xs)
+  fun heapToList (xs, E) = xs
+    | heapToList (xs, T (a, x, b)) = heapToList (x::heapToList (xs, a), b)
+in heapToList listToHeap xs end
+(** If xs is sorted by ascending order, the heap after fist insert is
+  * T (E, x1, E). After second, that is T (T (E, x1, E), x2, E).
+  * Because xs is sorted by ascending, x <= pivot is always true and b is E.
+  * Then following insert returns E as bigger tree.
+  * Therefore, the cost of each insert is constant, so the cost of listToHeap
+  * for sorted list is O(n).
+  * heapToList is called only one time on each node in heap, so the cost of
+  * heapToList is O(n).
+  * *)
+
