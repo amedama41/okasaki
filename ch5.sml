@@ -248,3 +248,98 @@ in heapToList listToHeap xs end
   * heapToList is O(n).
   * *)
 
+(** 5.5 Pairing Heap **)
+
+functor PairingHeap (Element : ORDERED) : HEAP =
+struct
+  structure Elem = Element
+
+  datatype Heap = E | T of Elem.T * Heap list
+
+  val empty = E
+  fun isEmpty E = true | isEmpty _ = false
+
+  fun merge (h, E) = h
+    | merge (E, h) = h
+    | merge (h1 as T (x, hs1), h2 as T (y, hs2)) =
+    if Elem.leq (x, y) then T (x, h2::hs1) else T (y, h1::hs2)
+  fun insert (x, h) = merge (T (x, []), h)
+
+  fun mergePairs [] = E
+    | mergePairs [h] = h
+    | mergePairs (h1::h2::hs) = merge (merge (h1, h2), mergePairs hs)
+
+  fun findMin E = raise EMPTY
+    | findMin (T (x, hs)) = x
+  fun deleteMin E = raise EMPTY
+    | deleteMin (T (x, hs)) = mergePairs hs
+
+(* Exercise 5.8 *)
+  datatype BinTree = E' | T' of Elem.T * BinTree * BinTree
+
+  fun toBinary E = E'
+    | toBinary h =
+    let
+      fun aux (T (x, []), []) = T' (x, E', E')
+        | aux (T (x, []), h2::hs2) = T' (x, E', aux (h2, hs2))
+        | aux (T (x, h1::hs1), []) = T' (x, aux (h1, hs2), E')
+        | aux (T (x, h1::hs1), h2::hs2) = T' (x, aux (h1, hs1), aux (h2, hs2))
+    in aux (h, []) end
+
+  fun merge' (h, E') = h
+    | merge' (E', h) = h
+    | merge' (T' (x, a1, E'), T' (y, a2, E')) =
+    if Elem.leq (x, y) then T' (x, T' (y, a2, a1), E')
+    else T' (y, T' (x, a1, a2), E')
+  fun insert' (x, h) = merge' (T' (x, E', E'), h)
+
+  fun mergePairs' E' = E'
+    | mergePairs' (t as T' (x, a, E')) = t
+    | mergePairs' (T' (x, a, T' (y, b, c))) =
+    merge' (merge' (T' (x, a, E'), T' (y, b, E')), mergePairs' c)
+
+  fun findMin' E' = raise EMPTY
+    | findMin' (T' (x, a, E')) = x
+  fun deleteMin' E' = raise EMPTY
+    | deleteMin' (T' (x, a, E')) = mergePairs a
+
+(** merge': T' (x, a, E'), T' (y, b, E') => T' (x', T' (y', b, a), E')
+  *     Α(x, y) = 1 + Φ(x') - Φ(x) - Φ(y)
+  *              = 1 + φ(x') + φ(y') + Φ(a) + Φ(b)
+  *                 - φ(x) - Φ(a) - φ(y) - Φ(b)
+  *              = 1 + φ(x') + φ(y') - φ(x) - φ(y)
+  *              = 1 + log(n1 + n2 + 1) + log(n1 + n2 - 1 + 1)
+  *                 - log(n1 + 1) - log(n2 + 1)
+  *              = 1 + log(n1 + n2 + 1) + log(n1 + n2)
+  *                 - log((n1 + 1) * (n2 + 1))
+  *              = 1 + log(n1 + n2 + 1) + log(n1 + n2) - log(nm + n1 + n2 + 1)
+  *              < 1 + log(n1 + n2) = 1 + log(n)
+  *
+  * mergePairs': T' (s, a, T' (t, b, u))
+  *         => T' (s', T' (u', v, T' (t', a, b)), E')
+  *     Hypothesize Α(s) <= 3φ(s)
+  *     Α(s)
+  *         = Γ(s) + Φ(s') - Φ(s)
+  *         = 1 + Γ(u) + Φ(s') - Φ(s)        (Γ(s) = 2 + Γ(u))
+  *         = 1 + Α(u) - Φ(u'') + Φ(u) + Φ(s') - Φ(s)
+  *         = 1 + Α(u) - (φ(u) + Φ(v)) + Φ(u) + Φ(s') - Φ(s)
+  *         = 1 + Α(u) - (φ(u) + Φ(v)) + Φ(u)
+  *             + (φ(s') + φ(t') + Φ(a) + Φ(b) + φ(u') + Φ(v))
+  *             - (φ(s) + φ(t) + Φ(a) + Φ(b) + Φ(u))
+  *         = 1 + Α(u) - φ(u) + φ(u') + φ(s') - φ(s) + φ(t') - φ(t)
+  *         = 1 + Α(u) - φ(u) + φ(u') + φ(t') - φ(t)
+  *                                             (φ(s') = φ(s) = log(n))
+  *         = 1 + 3φ(u) - φ(u) + φ(u') + φ(t') - φ(t)  (Hypothesis)
+  *         = 1 + 2φ(u) + φ(u') + φ(t') - φ(t)
+  *         <= 1 + φ(u) + φ(u') + φ(t')
+  *         <= 2φ(s) + φ(u')                  (#u + #t' <= #s)
+  *         < 3φ(s) = 3log(#s)                 (#u < #s)
+  *
+  * The amortized cost of deleteMin is
+  *     Α(h)
+  *         = 1 + Γ_(mergePairs)(s) + Φ(s') - Φ(s) - φ(h)
+  *         = 1 + 3log(#s) - φ(h)
+  *         <= 1 + 2log(n)
+  * *)
+end
+
