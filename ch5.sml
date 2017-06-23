@@ -343,3 +343,12 @@ struct
   * *)
 end
 
+(* Exercise 5.9 *)
+(** Create a binomial heap which has all rank trees, and insert a value into
+  * the heap k times. The cost is O(klogn).
+  * Insert elements of sorted list into empty a splay heap, and call deleteMin
+  * for the same heap k times. The cost is O(kn).
+  * Insert elements of list sorted in ascending order into empty a pairing
+  * heap, and call deleteMin for the same heap k times. The cost is O(kn).
+  * *)
+
