@@ -62,3 +62,75 @@ end
   *
   * *)
 
+(** Physicist's Method **)
+
+functor LazyBinomialHeap (Element : ORDERED) : HEAP =
+struct
+  structure Elem = Element
+
+  datatype Tree = NODE of int * Elem.T * Tree list
+  type Heap = Tree list susp
+
+  val empty = $ []
+  fun isEmpty ($ ts) = null ts
+
+  fun rank (NODE (r, x, c)) = r
+  fun root (NODE (r, x, c)) = x
+  fun link (t1 as NODE (r, x1, c1), t2 as NODE (_, x2, c2)) =
+    if Elem.leq (x1, x2) then NODE (r + 1, x1, t2::c1)
+    else NODE (r + 1, x2, t1::c2)
+  fun insTree (t, []) = [t]
+    | insTree (t, ts as t'::ts') =
+    if rank t < rank t' then t::ts else insTree (link (t t'), ts')
+
+  fun mrg (ts1, $ []) = ts1
+    | mrg ($ [], ts2) = ts2
+    | mrg (ts1 as t1::ts1', ts2 as t2::ts2') =
+    if rank t1 < rank t2 then t1::mrg (ts1', ts2)
+    else if rank t2 < rank t1 then t2::mrg (ts2', ts1)
+    else insTree (link (t1, t2), mrg (ts1', ts2'))
+
+  fun lazy insert (x, $ ts) = $ insTree (NODE (0, x, []), ts)
+  fun lazy merge ($ ts1, $ ts2) = $ mrg (ts1, ts2)
+
+  fun removeMinTree [] = raise EMPTY
+    | removeMinTree [t] = (t, [])
+    | removeMinTree [t::ts] =
+    let val (t', ts) = removeMinTree ts
+    in if Elem.leq (root t, root t') then (t, ts) else (t', t::ts) end
+
+  fun findMin ($ ts) = let val (t, _) = removeMinTree ts in root t end
+  fun lazy deleteMin ($ ts) =
+    let val (NODE (_, x, ts1), ts2) = removeMinTree ts
+    in $ mrg (rev ts1, ts2) end
+
+end
+
+(* Exercise 6.3 *)
+(** The complete cost of findMin is k. findMin does not change the
+  * potential, but findMin may force suspension for a object which potential is
+  * not 0. So, the amortized cost is k + Ψ(h) <= log(n) + log(n) = O(log(n)).
+  *
+  * Let t be the number of trees in a heap, r be the rank of tree with minimum
+  * value, and k be the number of link calls in the deleteMin.
+  * The complete cost of deleteMin is t + r + k.
+  * The amortized cost is
+  *     t + r + k - ((log(n - 1) - (t - 1 + r - k)) - (log(n) - t))
+  *     = t + r + k - (log(n - 1) - log(n) + 1 - r + k)
+  *     = t + 2r - log(n - 1) + log(n) - 1
+  *     <= t + 2r       (log(n) - 1 <= log(n - 1) <= log(n))
+  *     <= 3log(n)      (t <= log(n), r <= log(n))
+  *
+  * Let n1, k1 be the number of trees, the number of nodes in one heap
+  * respectively. Let n2 (<= n1), k2 be the number of trees, the number of
+  * nodes in another heap. Let k be the number of link calls in the merge.
+  * The complete cost of merge is log(n1) + k.
+  * The amortized cost is
+  *     log(n2) + 1 + k - (
+  *         (log(n1 + n2) - (k1 + k2 - k)) - (log(n1) - k1 + log(n2) - k2))
+  *     = log(n2) + 1 + k - (log(n1 + n2) + k - log(n1) - log(n2))
+  *     = log(n1) + 1 + 2log(n2) - log(n1 + n2)
+  *     <= log(n1) + 1 + 2log(n2) - log(2n1) = 2log(n2)
+  *
+  * *)
+
