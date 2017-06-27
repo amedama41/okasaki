@@ -134,3 +134,11 @@ end
   *
   * *)
 
+(* Exercise 6.4 *)
+(** If lazy is removed from the definitions of merge and deleteMin, each
+  * function may forces suspension. So the each amortized cost is added its
+  * potential to. Because the potential is at most log(n), the each amortized
+  * cost is O(log(n)).
+  *
+  * *)
+
