@@ -142,3 +142,21 @@ end
   *
   * *)
 
+(* Exercise 6.5 *)
+functor SizedHeap (H : HEAP) : HEAP =
+struct
+  structure Elem = H.Elem
+  datatype Heap = NE of int * H.Heap
+
+  val empty = NE (0, H.empty)
+  fun isEmpty NE (n, h) = (n = 0)
+
+  fun insert (x, NE (n, h)) = NE (n + 1, H.insert (x, h))
+  fun merge (NE (n1, h1), NE (n2, h2)) = NE (n1 + n2, H.merge (h1, h2))
+
+  fun findMin NE (n, h) = H.findMin h
+
+  fun deleteMin NE (n, h) = NE (n - 1, H.deleteMin h)
+
+end
+
