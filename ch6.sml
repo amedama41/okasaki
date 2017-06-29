@@ -160,3 +160,48 @@ struct
 
 end
 
+structure PhysicistQueue : QUEUE =
+struct
+  type 'a Queue = 'a list * int * 'a list susp * int * list
+
+  val empty = ([], 0, $ [], 0, [])
+  fun isEmpty (_, lenf, _, _, _) = (lenf = 0)
+
+  fun checkw ([], lenf, f, lenr, r) = (force f, lenf, f, lenr, r)
+    | checkw q = q
+  fun check (q as (w, lenf, f, lenr, r)) =
+    if lenr <= lenf then checkw q
+    else let val f' = force f
+         in checkw (f', lenf + lenr, $ (f' @ rev r), 0, []) end
+
+  fun snoc ((w, lenf, f, lenr, r), x) = check (w, lenf, f, lenr + 1, x::r)
+
+  fun head ([], lenf, f, lenr, r) = raise EMPTY
+    | head (x::w, lenf, $ f, lenr, r) = x
+  fun tail ([], lenf, f, lenr, r) = raise EMPTY
+    | tail (x::w, lenf, f, lenr, r)
+    = check (w, lenf - 1, $ tl (force f), lenr, r)
+end
+
+(* Exercise 6.6 *)
+(** (a) snoc rotates r only if the queue is empty, which means the potential is
+  * zero. So, the amortized cost of snoc is still O(1).
+  * On the one hand, tail may rotate r when the potential is not zero.
+  * Therefore, the amortized cost of tail is not O(1) but O(n).
+  * For example, when calling 2^(n + 1) snocs, first snoc rotates r and set w
+  * to a list with one element, and f has 2^(n) and 2^(n) elements respectively.
+  * For this queue, tail creates suspension which rotates r, and snoc force the
+  * suspension by making w empty. This cost is 2^n.
+  * Reuse same queue, and apply the same operations. Because another snoc
+  * creates an other suspension, the cost of another tail is also 2^n.
+  *
+  * (b) If tail does not create suspension ($ tl (force f)), checkw and check
+  * must extract some head elements when forcing f. This cost is not shared cost
+  * but unshared cost, so the tail cost is added O(|f|).
+  * For example, when there is a queue with n elements in f and 0 elements in r,
+  * and calling n tails, nth tail forces f, which cost is n. Reuse the queue
+  * which is called n - 1 tail and another tail calling also forces f. Because
+  * the operation extracting head elements is not suspension, the another
+  * tail's cost is also n.
+  * *)
+
