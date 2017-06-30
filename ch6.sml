@@ -205,3 +205,131 @@ end
   * tail's cost is also n.
   * *)
 
+signature SORTABLE =
+sig
+  structure Elem : ORDERED
+
+  type Sortable
+
+  val empty : Sortable
+  val add : Elem.T * Sortable -> Sortable
+  val sort : Sortable -> Elem.T list
+end
+
+functor BottomUpMergeSort (Element : ORDERED) : SORTABLE =
+struct
+  structure Elem = Element
+
+  type Sortable = int * Elem.T list list susp
+
+  fun mrg ([], ys) = ys
+    | mrg (xs, []) = xs
+    | mrg (xs as x::xs', ys as y::ys') =
+    if Elem.leq (x, y) then x::mrg (xs', ys) else y::mrg (xs, ys')
+
+  val empty = (0, $ [])
+  fun add (x, (size, segs)) =
+    let
+      fun addSeg (seg, segs, size) =
+        if size mod 2 = 0 then seg::segs
+        else addSeg (mrg (seg, hd segs), tl segs, size div 2)
+    in (size + 1, $ addSeg ([x], force segs, size)) end
+  fun sort (size, segs) =
+    let
+      fun mrgAll (xs, []) = xs
+        | mrgAll (xs, seg::segs) = mrgAll (mrg (xs, seg), segs)
+    in mrgAll ([], force segs) end
+end
+
+(* Exercise 6.7 *)
+functor BankersBottomUpMergeSort (Element : ORDERED) : SORTABLE =
+struct
+  structure Elem = Element
+
+  type Sortable = int * Elem.T Stream list
+
+  fun lazy mrg ($ NIL, ys) = ys
+         | mrg (xs, $ NIL) = xs
+         | mrg (xs as $ CONS (x, xs'), ys as $ CONS (y, ys')) =
+         if Elem.leq (x, y) then $ CONS (x, mrg (xs', ys))
+         else $ CONS (y, mrg (xs, ys'))
+
+  val empty : (0, [])
+
+  fun add (x, (size, segs)) =
+    let
+      fun addSeg (seg, segs, size) =
+        if size mod 2 = 0 then seg::segs
+        else addSeg (mrg (seg, hd segs), tl segs, size div 2)
+    in (size + 1, addSeg ($ CONS (x, $ NIL), segs, size)) end
+
+  fun mrgAll (xs, []) = xs
+    | mrgAll (xs, seg::segs) = mrgAll (mrg (xs, seg), segs)
+
+  fun sort (size, segs) =
+    let
+      fun toList ($ NIL) = []
+        | toList ($ CONS (x, xs)) = x::toList (xs)
+    in toList (mrgAll ([], segs)) end
+
+  fun take (k) =
+    let
+      fun toList (k, $ NIL) = []
+        | toList (0, xs) = []
+        | toList (k, $ CONS (x, xs)) = x::toList (k - 1, xs)
+    in toList (k, mrgAll ([], segs)) end
+
+(** (a) Hypothesize D(n) is at most 2n, when add and sort repay log(n) + 1 and
+  * n dept respectively.
+  * When n = 2^k and given i (i < 2^k), total shared cost by add is
+  *     2 * [i / 2] + 4 * [i / 4] + ... + 2^(k - 1) * [i / 2^(k - 1)]
+  *     <= 2 * i / 2 + 4 * i /4 + ... + 2^(k - 1) * i / 2^(k - 1) = (k - 1)i.
+  * If one add repays log(n) + 1 = k + 1 dept, then
+  *     D(n + i) = D(n) + (k - 1)i - i * (k + 1) = D(n) - 2i.
+  * So, i = 2^k, D(2^(k + 1)) excluding the dept which this add increments is 0.
+  * This add adds 2 * 2^(k + 1) - 2 dept, then D(2^(k + 1) = 2n) <= 2 * 2n.
+  *
+  * The unshared cost of sort at worst case (when n = 2^k - 1) is
+  *     1 + (1 + 2) + ... + (1 + 2 + ... + 2^(k - 1)) + n + 1 = 3n - k + 2
+  * (mrg created by mrgAll is not unshared).
+  * If sort repays 2n dept, because D(n) is 0 sort can force suspension created
+  * by add.
+  *
+  * The amortized cost of add is k + 1 + k + 1 = 2log(n) + 2.
+  * The amortized cost of sort is k + 1 + 2n + 2n - k + 1 + n + 1 = 3 + 5n.
+  *
+  * (b) Unshared cost of take is at most
+  *     log(n) + sum_(i=1)^k{log(n) - i + 1) + k
+  *     = (k + 1)log(n) - k(k + 1)/2 + 2k
+  *     = (k + 1)log(n) - k(k - 3)/2.
+  * The cost of taking one element from list is at most O(log(n)).
+  * Therefore, if take repays klog(n) dept, take can force suspension.
+  * Then the amortized cost of take is (2k + 1)log(n) - k(k - 3)/2.
+  *
+  * *)
+end
+
+functor LazyParingHeap (Element : ORDERED) : HEAP =
+struct
+  structure Elem = Element
+
+  datatype Heap = E | T of Elem.T *  Heap * Heap susp
+
+  val empty = E
+  fun isEmpty E = true | isEmpty _ = false
+
+  fun merge (a, E) = a
+    | merge (E, b) = b
+    | merge (a as T (x, _, _), b as T (y, _, _)) =
+    if Elem.leq (x, y) then link (a, b) else link (b, a)
+  and link (T (x, E, m), a) = T (x, a, m)
+    | link (T (x, b, m), a) = T (x, E $ merge (merge (a, b), force m))
+
+  fun insert (x, a) = merge (T (x, E, $ E), a)
+
+  fun findMin E = raise EMPTY
+    | findMin (T (x, a, m)) = x
+  fun deleteMin E = raise EMPTY
+    | deleteMin (T (x, a, $ b)) = merge (a, b)
+end
+
