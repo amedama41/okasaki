@@ -25,7 +25,7 @@ struct
   fun isEmpty (lenf, _, _, _) = (lenf = 0)
 
   fun check (q as (lenf, f, lenr, r)) =
-    if lenr <= lenf then q else (lenf + lenr, f ++ reverse r, 0 $ NIL)
+    if lenr <= lenf then q else (lenf + lenr, f ++ reverse r, 0, $ NIL)
 
   fun snoc ((lenf, f, lenr, r), x) = check (lenf, f, lenr + 1, $ CONS (x, r))
 
