@@ -40,3 +40,39 @@ struct
     * *)
 end
 
+structure RealTimeQueue : QUEUE =
+struct
+  type 'a Queue = 'a Stream * 'a list * 'a Stream
+
+  val empty = ($ NIL, [], $ NIL)
+  fun isEmpty ($ NIL, _, _) = true
+    | isEmpty _ = false
+
+  fun rotate ($ NIL, y::_, a) = $ CONS (y, a)
+    | rotate ($ CONS (x, xs), y::ys, a) =
+    $ CONS (x, rotate (xs, ys, $ CONS (y, a)))
+
+  fun exec (f, r, $ CONS (x, s)) = (f, r, s)
+    | exec (f, r, $ NIL) = let val f' = rotate (f, r, $ NIL) in (f', r, f') end
+
+  fun snoc ((f, r, s), x) = exec (f, x::r, s)
+
+  fun head ($ NIL, r, s) = raise EMPTY
+    | head ($ CONS (x, f), r, s) = x
+  fun tail ($ NIL, r, s) = raise EMPTY
+    | tail ($ CONS (x, f), r, s) = exec (f, r, s)
+
+  (* Exercise 7.2 *)
+  fun size (f, r, s) =
+    let
+      fun len ($ NIL) = 0
+        | len ($ CONS (x, xs)) = 1 + len xs
+    in len s + 2 * length r end
+  (** According to |s| = |f| - |r| => |f| = |s| + |r|, the length of queue is
+    * |s| + 2|r|. Because |s| <= |f|, the step of this size may be less than
+    * the one calculating |f| and |r| length. Because forcing suspension cost
+    * is relatively high, this difference is large.
+    *
+    * *)
+end
+
