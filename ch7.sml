@@ -76,3 +76,28 @@ struct
     * *)
 end
 
+(** 7.3 Binomial Heap **)
+
+(* Exercise 7.3 *)
+(** Hypothesize there is at least three completed zero in front of first
+  * schedule range, and there is at least two completed zero between neighbor
+  * ranges in a schedule.
+  *
+  * Let r1 and r2 be the first two ranges in a schedule, and z1, z2, z3 be the
+  * completed zeros in front of r1. Let z4 and z5 be the two completed zeros
+  * between r1 and r2. r0 is the new range created by insert.
+  *
+  * If lazy is removed from insTree, suspension is forced three times.
+  *
+  * m=0 => If both r1 and r2 are removed, z2, z3, z4 are the three completed
+  * zeros. If r1 is only removed, then z4, z5 and a zero switched in r2 are the
+  * three completed zeros. If r1 is not removed, z2, z3, and a zero switch in r1
+  * are the three completed zeros.
+  * m=1 => If r1 is removed, a zero switched in r0, z2 and z3 are the three
+  * completed zeros.
+  * m=2 => Two zeros switched in r0 and z2 are the tree completed zeros.
+  * m>=3 => Three zeros switch in r0 are the three completed zeros, and z2 and
+  * z3 are the two completed zeros.
+  *
+  * *)
+
