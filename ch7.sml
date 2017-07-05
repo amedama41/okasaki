@@ -101,3 +101,106 @@ end
   *
   * *)
 
+functor ScheduledBinomialHeap (Element : ORDERED) : HEAP =
+struct
+  structure Elem = Element
+
+  datatype Tee = NODE of Elem.T * Tree list
+  datatype Digit = ZERO | ONE of Tree
+  type Schedule = Digit Stream list
+  type Heap = Digit Stream * Schedule
+
+  val emptn = ($ NIL, [])
+  fun isEmpty ($ NIL, _) = true | isEmpty _ = false
+
+  fun link (t1 as NODE (x1, c1), t2 as NODE (x2, c2)) =
+    if Elem.leq (x1, x2) then NODE (x1, t2::c1) else NODE (x2, t1::c2)
+  fun insTree (t, $ NIL) = $ CONS (ONE t, $ NIL)
+    | insTree (t, $ CONS (ZERO, ds)) = $ CONS (ONE t, ds)
+    | insTree (t, $ CONS (ONE t', ds)) =
+    $ CONS (ZERO, insTree (link (t, t'), ds))
+  fun mrg (ds1, $ NIL) = ds1
+    | mrg ($ NIL, ds2) = ds2
+    | mrg ($ CONS (ZERO, ds1), $ CONS (d, ds2)) = $ CONS (d, mrg (ds1, ds2))
+    | mrg ($ CONS (d, ds1), $ CONS (ZERO, ds2)) = $ CONS (d, mrg (ds1, ds2))
+    | mrg ($ CONS (ONE t1, ds1), $ CONS (ONE t2, ds2)) =
+    $ CONS (ZERO, insTree (link (t1, t2), mrg (ds1, ds2)))
+
+  fun normalize (ds as $ NIL) = ds
+    | normalize (ds as $ CONS (_, ds')) = (normalize ds'; ds)
+  fun exec [] = []
+    | exec ($ CONS (ZERO, job)::sched) = job::sched
+    | exec (_::sched) = sched
+
+  fun insert (x, (ds, sched)) =
+    let val ds' = insTree (NODE (x, []), ds)
+    in (ds', exec (exec (ds'::sched))) end
+  fun merge ((ds1, _), (ds2, _)) =
+    let val ds = normalize (mrg (ds1, ds2)) in (ds, []) end
+
+  fun removeMinTree ($ NIL) = raise EMPTY
+    | removeMinTree ($ CONS (ONE t, $ NIL)) = (t, $ NIL)
+    | removeMinTree ($ CONS (ZERO, ds)) =
+    let val (t', ds') = removeMinTree ds in (t', $ CONS (ZERO, ds')) end
+    | removeMinTree ($ CONS (ONE (t as NODE (x, _)), ds)) =
+    case removeMinTree ds of
+         (t' as NODE (x', _), ds') =>
+         if Elem.leq (x, x') then (t, $ CONS (ZERO, ds'))
+         else (t', $ CONS (ONE t, ds'))
+  fun findMin (ds, _) =
+    let val (NODE (x, _), _) = removeMinTree ds in x end
+  fun deleteMin (ds, _) =
+    let
+      val (NODE (x, c), ds') = removeMinTree ds
+      val ds'' = mrg (listToHeap (map ONE (rev c)), ds')
+    in (normalize ds'', []) end
+
+  (* Exercise 7.4 *)
+  fun mrgWithList ([], ds) = ds
+    (* It is guaranteed that list length is always less than or equal to
+      * stream length *)
+    | mrgWithList (t::ts, $ CONS (ZERO, ds)) =
+    $ CONS (ONE t, mrgWithList (ts, ds))
+    | mrgWithList (t::ts, $ CONS (ONE t', ds)) =
+    $ CONS (ZERO, insTree (link (t, t'), mrgWithList (ts, ds)))
+end
+
+(** 7.4 Bottom Up Merge Sort With Sharing **)
+
+functor ScheduledBottomUpMergeSort (Element : ORDERED) : HEAP =
+struct
+  structure Elem = Element
+
+  type Schedule = Elem.T Stream list
+  type Sortable = int * (Elem.T Stream * Schedule) list
+
+  fun lazy mrg ($ NIL, ys) = ys
+         | mrg (xs, $ NIL) = xs
+         | mrg (xs as $ CONS (x, xs'), ys as $ CONS (y, ys')) =
+         if Elem.leq (x, y) then $ CONS (x, mrg (xs', ys))
+         else $ CONS (y, mrg (xs, ys'))
+
+  fun exec1 [] = []
+    | exec1 (($ NIL)::sched) = exec1 sched
+    | exec1 (($ CONS (x, xs))::sched) = xs::sched
+  fun exec2 (xs, sched) = (xs, exec1 (exec1 sched))
+
+  val empty = (0, [])
+  fun add (x, (size, segs)) =
+    let
+      fun addSeg (xs, segs, size, rsched) =
+        if size mod 2 = 0 then (xs, rev rsched)::segs
+        else
+          let
+            val ((xs', [])::segs') = segs
+            val xs'' = mrg (xs, xs')
+          in addSeg (xs'', segs', size div 2, xs''::rsched) end
+      val segs' = addSeg ($ CONS (x, $ NIL), segs, size, [])
+    in (size + 1, map exec2 segs) end
+  fun sort (size, segs) =
+    let
+      fun mrgAll (xs, []) = xs
+        | mrgAll (xs, (xs', _)::segs) = mrgAll (mrg (xs, xs'), segs)
+    in streamToList (mrgAll ($ NIL, segs)) end
+end
+
