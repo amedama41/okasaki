@@ -169,3 +169,47 @@ struct
     check (lenf - 1, f, invalidate state, lenr, r)
 end
 
+(* Exercise 8.3 *)
+structure HoodMelvileQueue3 : QUEUE =
+struct
+  datatype 'a RotationState =
+      IDLE
+    | REVERSING of int * 'a list * 'a list * 'a list * 'a list
+    | APPENDING of int * 'a list * 'a list
+    | DONE of int * 'a list
+
+  type 'a Queue = int * 'a list * 'a RotationState * 'a list
+
+  val empty = (0, [], IDLE, [])
+  fun isEmpty (diff, [], state, r) = true | isEmpty _ = false
+
+  fun exec (REVERSING (ok, x::f, f', y::r, r')) =
+    (1, REVERSING (ok + 1, f, x::f', r, y::r'))
+    | exec (REVERSING (ok, [], f', [y], r')) = (1, APPENDING (ok, f', y::r'))
+    | exec (APPENDING (0, f', r')) = (0, DONE r')
+    | exec (APPENDING (ok, x::f', r')) = (1, APPENDING (ok - 1, f', x::r'))
+    | exec state = (0, state)
+
+  fun invalidate (REVERSING (ok, f, f', r, r')) =
+    REVERSING (ok - 1, f, f', r, r')
+    | invalidate (APPENDING (0, f', x::r')) = DONE r'
+    | invalidate (APPENDING (ok, f', r')) = APPENDING (ok - 1, f', r')
+    | invalidate state = state
+
+  fun exec2 (diff, f, state, r) =
+    case exec state of
+         (0, DONE newf) => (diff, newf, IDLE, r)
+       | (d, newstate) => (diff + d, f, newstate, r)
+
+  fun check (q as (diff, f, state, r)) =
+    if diff >= 0 then exec2 q
+    else let val newstate = REVERSING (0, f, [], r, [])
+         in exec2 (exec2 (0, f, newstate, 0, [])) end
+
+  fun snoc ((diff, f, state, r), x) = check (diff - 1, f, state, x::r)
+  fun head (diff, [], state, r) = raise EMPTY
+    | head (diff, x::f, state, r) = x
+  fun tail (diff, [], state, r) = raise EMPTY
+    | tail (diff, x::f, state, r) = check (diff - 1, f, invalidate state, r)
+end
+
