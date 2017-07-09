@@ -318,3 +318,15 @@ end
   *
   * *)
 
+(* Exercise 8.6 *)
+(** When cons 22 times, then last 4 times, c=4 is faster than c=2.
+  * In this case, 2 pairs of reverse and drop are forced, and each cost is
+  * 1 and 6 respectively for c=4. While for c=2, 3 pairs are forced and each
+  * cost is 1, 4, 8. So total cost when c=4 is 5 steps less than when c=2.
+  *
+  * But one more last, c=2 is faster than c=4. The cost when c=2 is as same as
+  * before. When c=4, however, addition reverse and drop are forced. It results
+  * in more 18 steps.
+  *
+  * *)
+
