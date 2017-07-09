@@ -38,17 +38,17 @@ end
 (* Exercise 6.2 *)
 (** Hypothesize D(i) <= min(3i, 2|f| - |r|).
   *
-  * snoc repays 1 dept. tail repays 3 dept.
-  * snoc decrements 2|f| - |r| by 1. If snoc repays dept for first node for f,
+  * snoc repays 1 debt. tail repays 3 debts.
+  * snoc decrements 2|f| - |r| by 1. If snoc repays debt for first node for f,
   * the hypothesize holds.
-  * tail decrements 3i by 3, and 2|f| - |r| by 2. If tail repays dept for first
+  * tail decrements 3i by 3, and 2|f| - |r| by 2. If tail repays debt for first
   * three nodes, the hypothesize holds.
   * If snoc or tail calls reverse, |f| is m, and |r| is 2m + 1, then ++ create
-  * m dept for first m nodes in f, and reverse create 2m dept for node m.
+  * m debts for first m nodes in f, and reverse create 2m debts for node m.
   * Then,
   *     d(i) = 1 (i < m) | 2m (i = m) | 0 (i > m)
   *     D(i) = i + 1 (i < m) | 3m + 1 (i >= m).
-  * Because snoc or tail repays dept for at least first node in f, the
+  * Because snoc or tail repays debt for at least first node in f, the
   * hypothesize holds.
   *
   *
@@ -280,19 +280,19 @@ struct
     in toList (k, mrgAll ([], segs)) end
 
 (** (a) Hypothesize D(n) is at most 2n, when add and sort repay log(n) + 1 and
-  * n dept respectively.
+  * n debts respectively.
   * When n = 2^k and given i (i < 2^k), total shared cost by add is
   *     2 * [i / 2] + 4 * [i / 4] + ... + 2^(k - 1) * [i / 2^(k - 1)]
   *     <= 2 * i / 2 + 4 * i /4 + ... + 2^(k - 1) * i / 2^(k - 1) = (k - 1)i.
-  * If one add repays log(n) + 1 = k + 1 dept, then
+  * If one add repays log(n) + 1 = k + 1 debts, then
   *     D(n + i) = D(n) + (k - 1)i - i * (k + 1) = D(n) - 2i.
-  * So, i = 2^k, D(2^(k + 1)) excluding the dept which this add increments is 0.
-  * This add adds 2 * 2^(k + 1) - 2 dept, then D(2^(k + 1) = 2n) <= 2 * 2n.
+  * So, i = 2^k, D(2^(k + 1)) excluding the debt which this add increments is 0.
+  * This add adds 2 * 2^(k + 1) - 2 debts, then D(2^(k + 1) = 2n) <= 2 * 2n.
   *
   * The unshared cost of sort at worst case (when n = 2^k - 1) is
   *     1 + (1 + 2) + ... + (1 + 2 + ... + 2^(k - 1)) + n + 1 = 3n - k + 2
   * (mrg created by mrgAll is not unshared).
-  * If sort repays 2n dept, because D(n) is 0 sort can force suspension created
+  * If sort repays 2n debts, because D(n) is 0 sort can force suspension created
   * by add.
   *
   * The amortized cost of add is k + 1 + k + 1 = 2log(n) + 2.
@@ -303,7 +303,7 @@ struct
   *     = (k + 1)log(n) - k(k + 1)/2 + 2k
   *     = (k + 1)log(n) - k(k - 3)/2.
   * The cost of taking one element from list is at most O(log(n)).
-  * Therefore, if take repays klog(n) dept, take can force suspension.
+  * Therefore, if take repays klog(n) debts, take can force suspension.
   * Then the amortized cost of take is (2k + 1)log(n) - k(k - 3)/2.
   *
   * *)
