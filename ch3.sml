@@ -307,7 +307,8 @@ struct
       * of the Red-Black tree from bottom to top.
       * *)
     let
-      fun balance' ((R, v1, t1)::(R, v2, t2)::(B, v3, t3)::xs) =
+      fun balance' [(R, v1, t1)] = [(B, v1, t1)]
+        | balance' ((R, v1, t1)::(R, v2, t2)::(B, v3, t3)::xs) =
         (B, v1, t1)::(balance' ((R, v2, T (B, t3, v3, t2))::xs))
         | balance' xs = xs
       fun ins (ts, []) = ts
