@@ -246,3 +246,75 @@ struct
     | tail (x::xs, q) = (xs, q)
 end
 
+functor BankersDeque (val c : int) : DEQUE =
+struct
+  type 'a Queue = int * 'a Stream * int * 'a Stream
+
+  val emtpy = (0, $ NIL, 0, $ NIL)
+  fun isEmpty (lenf, f, lenr, r) = (lenf + lenr = 0)
+
+  fun check (q as (lenf, f, lenr, r)) =
+    if lenf > c * lenr + 1 then
+      let
+        val i = (lenf + lenr) div 2
+        val j = lenf + lenr - i
+        val f' = take (f, i)
+        val r' = r' ++ reverse (drop (f, i))
+      in (i, f', j, r')
+    else if lenr > c * lenf + 1 then
+      let
+        val j = (lenf + lenr) div 2
+        val i = lenf + lenr - i
+        val r' = take (r, i)
+        val f' = f' ++ reverse (drop (r, i))
+      in (i, f', j, r')
+    else q
+
+  fun cons (x, (lenf, f, lenr, r)) = check (lenf + 1, $ CONS (x, f), lenr, r)
+  fun head (lenf, $ NIL, lenr, $ NIL) = raise EMPTY
+    | head (lenf, $ NIL, lenr, $ CONS (x, _)) = x
+    | head (lenf, $ CONS (x, f'), lenr, r) = x
+  fun tail (lenf, $ NIL, lenr, $ NIL) = raise EMPTY
+    | tail (lenf, $ NIL, lenr, $ CONS (x, _)) = empty
+    | tail (lenf, $ CONS (x, f'), lenr, r) = check (lenf - 1, f', lenr, r)
+
+  fun snoc ((lenf, f, lenr, r), x) = check (lenf, f, lenr + 1, $ CONS (x, r))
+  fun last (lenf, $ NIL, lenr, $ NIL) = raise EMPTY
+    | last (lenf, $ CONS (x, _), lenr, $ NIL) = x
+    | last (lenf, f, lenr, $ CONS (x, r')) = x
+  fun init (lenf, $ NIL, lenr, $ NIL) = raise EMPTY
+    | init (lenf, $ CONS (x, _), lenr, $ NIL) = empty
+    | init (lenf, f, lenr, $ CONS (x, r')) = check (lenf, f, lenr - 1, r')
+end
+
+(* Exercise 8.5 *)
+(** When |f| > |r|, cons decrements t. If cons repays 1 debt, the invariant is
+  * sustained.
+  *
+  * tail decrements index i. If tail repays c + 1 debt, the invariant is
+  * sustained.
+  *
+  * When cons causes rotation, that is |f| = c|r| + 1 before cons, the rotation
+  * create one debt for each element in f', and one debt for each element in
+  * first |r| elements in r', |f| + 1 = c|r| + 2 debts for |r|th element in r'.
+  * Therefore d(i) = 1 for f', and d(i) = 1 (i < |r|) or c|r| + 2 (i = |r|) or
+  * 0 (i > |r|) for r'. And, D(i) = i + 1 for f', D(i) = i + 1 (i < |r|) or
+  * c|r| + |r| + 1 (i >= |r|) for r'. Then the invariant is sustained as long as
+  * cons repays 1 debt for first elements in f' and r' respectively.
+  *
+  * When tail causes rotation, that is |r| = c|f| + 1 before tail, the rotation
+  * create one debt for each element in r', and one debt for each element in
+  * first f's |f| elements excluding first removed element, |r| = c|f| + 1 debts
+  * for (|f| - 1)th element in f'. Therefore, d(i) = 1 (i < |f| - 1) or c|f| + 1
+  * (i = |f| - 1) or 0 (i > |f| - 1) for f', and d(i) = 1 for r'. And, D(i) =
+  * i + 1 (i < |f| - 1) or c|f| + |f| (i >= |f| - 1) for f', and D(i) = i + 1
+  * for r'. Then the invariant is sustained as long as tail repays 1 debt for
+  * first elements in f' and r' respectively, and c debts for (|f| - 1|)th
+  * element in f'.
+  *
+  * This proof is not correct when c=2. However, if the invariant is changed
+  * to min(ci + i, 2(cs + 1 - t)) and tail repays 2c + 2 debts, the new
+  * invariant is sustained even if c=2.
+  *
+  * *)
+
