@@ -213,3 +213,36 @@ struct
     | tail (diff, x::f, state, r) = check (diff - 1, f, invalidate state, r)
 end
 
+(** 8.4 Deque **)
+signature DEQUE =
+sig
+  type 'a Queue
+
+  val empty : 'a Queue
+  val isEmpty : 'a Queue -> bool
+
+  val cons : 'a * 'a Queue -> 'a Queue
+  val head : 'a Queue -> 'a
+  val tail : 'a Queue -> 'a Queue
+
+  val snoc : 'a Queue * 'a -> 'a Queue
+  val last : 'a Queue -> 'a
+  val init : 'a Queue -> 'a Queue
+end
+
+(* Exercise 8.4 *)
+functor QueueWithCons (Q : QUEUE) : QUEUE =
+struct
+  type 'a Queue = 'a list * 'a Q.Queue
+
+  val empty = ([], Q.empty)
+  fun isEmpty ([], q) = Q.isEmpty q | isEmpty _ = false
+
+  fun cons (x, (xs, q)) = (x::xs, q)
+  fun snoc ((xs, q), x) = (h, Q.snoc (q, x))
+  fun head ([], q) = Q.head q
+    | head (x::xs, q) = x
+  fun tail ([], q) = Q.tail q
+    | tail (x::xs, q) = (xs, q)
+end
+
