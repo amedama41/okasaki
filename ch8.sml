@@ -330,3 +330,79 @@ end
   *
   * *)
 
+functor RealTimeDeque (val c : int) : DEQUE =
+struct
+  type 'a Queue = int * 'a Stream * 'a Stream * int * 'a Stream * 'a Stream
+
+  val empty = (0, $ NIL, $ NIL, 0, $ NIL, $ NIL)
+  fun isEmpty (lenf, f, sf, lenr, r, sr) = (lenf + lenr = 0)
+
+  fun exec1 ($ CONS (x, s)) = s
+    | exec1 s = s
+  fun exec2 s = exec1 (exec1 s)
+
+  fun rotateRev ($ NIL, r, a) = reverse r ++ a
+    | rotateRev ($ CONS (x, f), r, a) =
+    $ CONS (x, rotateRev (f, drop (c, r), reverse (take (c, r)) ++ a))
+  fun rotateDrop (f, j, r) =
+    if j < c then rotateRev (f, drop (j, r), $ NIL)
+    else let val ($ CONS (x, f')) = f
+         in $ CONS (x, rotateDrop (f', j - c, drop (c, r))) end
+
+  fun check (q as (lenf, f, sf, lenr, r, sr)) =
+    if lenf > c * lenr + 1 then
+      let
+        val i = (lenf + lenr) div 2
+        val j = lenf + lenr - i
+        val f' = take (f, i)
+        val r' = rotateDrop (r, i, f)
+      in (i, f', f', j, r', r') end
+    else if lenr > c * lenf + 1 then
+      let
+        val j = (lenf + lenr) div 2
+        val i = lenf + lenr - i
+        val r' = take (j, r)
+        val f' = rotateDrop (f, j, r)
+      in (i, f', f', j, r', r') end
+    else q
+
+  fun cons (x, (lenf, f, sf, lenr, r, sr)) =
+    check (lenf + 1, $ CONS (x, f), exec1 sf, lenr, r, exec1 sr)
+  fun head (lenf, $ NIL, sf, lenr, $ NIL, sr) = raise EMPTY
+    | head (lenf, $ NIL, sf, lenr, $ CONS (x, _), sr) = x
+    | head (lenf, $ CONS (x, f'), sf, lenr, r, sr) = x
+  fun tail (lenf, $ NIL, sf, lenr, $ NIL, sr) = raise EMPTY
+    | tail (lenf, $ NIL, sf, lenr, $ CONS (x, _), sr) = empty
+    | tail (lenf, $ CONS (x, f'), sf, lenr, r, sr) =
+    check (lenf - 1, f', exec2 sf, lenr, r, exec2 sr)
+
+  fun sonc ((lenf, f, sf, lenr, r, sr), x) =
+    check (lenf, f, exec1 sf, lenr + 1, $ CONS (x, r), exec1 sr)
+  fun last (lenf, $ NIL, sf, lenr, $ NIL, sr) = raise EMPTY
+    | last (lenf, $ CONS (x, _), sf, lenr, $ NIL, sr) = x
+    | last (lenf, f, sf, lenr, $ CONS (x, _), sr) = x
+  fun init (lenf, $ NIL, sf, lenr, $ NIL, sr) = raise EMPTY
+    | init (lenf, $ CONS (x, _), sf, lenr, $ NIL, sr) = empty
+    | init (lenf, f, sf, lenr, $ CONS (x, r'), sr) =
+    check (lenf, f, exec2 sf, lenr - 1, r', exec2 sr)
+end
+
+(* Exercise 8.7 *)
+(** Let x the length of a stream f in rotateDrop/rotateRev. Hypothesize
+  * x <= 2(cs + 1 - t) / c until first rotateRev is created, and
+  * x <= 2(cs + 1 - t) / c + 1 since the rotateRev is created. When rotation
+  * is occurred, x is |r| and 2(cs + 1 - t) >= (c - 1)|r| + 1. Then the
+  * invariant holds.
+  * When the first rotateRev is created, the length of the f is not changed but
+  * the right hand side value is decreased by 1. Then by adding the right hand
+  * size expression by 1, the invariant holds.
+  * cons and tail may decrease the right hand value by 1 or 2 respectively, by
+  * calling exec1 and exec2, the invariant holds.
+  * When calling a operation which occurs the next rotation, x <= 1 and this
+  * operation calls exec1 or exec2, then all suspensions are forced before the
+  * next rotation (These suspensions exclude ones created by ++. Because the
+  * chain length of ++ is at most 2, the cost of each operation is still
+  * constant.
+  *
+  * *)
+
