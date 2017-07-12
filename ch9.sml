@@ -118,5 +118,14 @@ struct
     | drop (k, [ONE t]) = if k > size t then [] else dropTree (k, t, [])
     | drop (k, ONE t::ts) =
     if k > size t then drop (k - size t, ts) else dropTree (k, t, ZERO::ts)
+
+  (* Exercise 9.2 *)
+  fun create (n, x) =
+    let
+      fun aux (0, t) = []
+        | aux (n, t) =
+        if n mod 2 = 1 then ONE t::aux (n div 2, NODE (2 * size t, t, t))
+        else ZERO::aux (n div 2, NODE (2 * size t, t, t))
+  in aux (n, LEAF x) end
 end
 
