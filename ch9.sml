@@ -129,3 +129,46 @@ struct
   in aux (n, LEAF x) end
 end
 
+(* Exercise 9.3 *)
+structure SparseBinaryRandomAccessList : RANDOMACCESSLIST =
+struct
+  datatype 'a Tree = LEAF of 'a | NODE of int * 'a Tree * 'a Tree
+  type 'a RList = 'a Tree list
+
+  val empty = []
+  fun isEmpty ts = null ts
+
+  fun size (LEAF x) = 1
+    | size (NODE (w, t1, t2)) = w
+  fun link (t1, t2) = NODE (size t1 + size t2, t1, t2)
+  fun consTree (t, []) = [t]
+    | consTree (t, ts as t'::ts') =
+    if size t < size t' then t::ts else consTree (link (t, t'), ts)
+  fun unconsTree [] = raise EMPTY
+    | unconsTree (t::ts) =
+    let
+      fun aux (LEAF x, ts) = (x, ts)
+        | aux (NODE (w, t1, t2), ts) = aux (t1, t2::ts)
+    in aux (t, ts) end
+
+  fun cons (x, ts) = consTree (LEAF x, ts)
+  fun head ts = let val (LEAF x, _) = unconsTree ts in x end
+  fun tail ts = let val (_, ts') = unconsTree ts in ts' end
+
+  fun lookupTree (0, LEAF x) = x
+    | lookupTree (i, NODE (w, t1, t2)) =
+    if i < w div 2 then lookupTree (i, t1)
+    else lookupTree (i - w div 2, t2)
+  fun updateTree (0, y, LEAF x) = LEAF y
+    | updateTree (i, y, NODE (w, t1, t2)) =
+    if i < w div 2 then NODE (w, updateTree (i, y, t1), t2)
+    else NODE (w, t1, updateTree (i - w div 2, y, t2))
+
+  fun lookup (i, []) = raise SUBSCRIPT
+    | lookup (i, t::ts) =
+    if i < size t then lookupTree (i, t) else lookup (i - size t, ts)
+  fun update (i, y, []) = raise SUBSCRIPT
+    | update (i, y, t::ts) =
+    if i < size t then updateTree (i, t)::ts else t::update (i - size t, ts)
+end
+
