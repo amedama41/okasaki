@@ -172,3 +172,24 @@ struct
     if i < size t then updateTree (i, t)::ts else t::update (i - size t, ts)
 end
 
+(* Exercise 9.4 *)
+structure ZeroLessDense =
+struct
+  datatype Digit = ONE | TWO
+  type Nat = Digit list
+
+  fun inc [] = [ONE]
+    | inc (ONE::ds) = TWO::ds
+    | inc (TWO::ds) = ONE::inc ds
+
+  fun dec [ONE] = []
+    | dec (TWO::ds) = ONE::ds
+    | dec (ONE::ds) = TWO::dec ds
+
+  fun add (ds, []) = ds
+    | add ([], ds) = ds
+    | add (ONE::ds1, ONE::ds2) = TWO::add(ds1, ds2)
+    | add (TWO::ds1, TWO::ds2) = TWO::inc (inc (add(ds1, ds2)))
+    | add (d1::ds1, d2::ds2) = ONE::inc (add(ds1, ds2))
+end
+
