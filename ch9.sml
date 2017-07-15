@@ -71,7 +71,7 @@ struct
   fun size (LEAF x) = 1
     | size (NODE (w, t1, t2)) = w
   fun link (t1, t2) = NODE (size t1 + size t2, t1, t2)
-  fun consTree (t, []) = [t]
+  fun consTree (t, []) = [ONE t]
     | consTree (t, ZERO::ts) = ONE t::ts
     | consTree (t1, ONE t2::ts) = ZERO::consTree (link (t1, t2), ts)
   fun unconsTree [] = raise EMPTY
