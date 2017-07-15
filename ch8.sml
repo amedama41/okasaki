@@ -86,7 +86,7 @@ struct
   fun isEmpty (lenf, f, state, lenr, r) = (lenf = 0)
 
   fun exec (REVERSING (ok, x::f, f', y::r, r')) =
-    REVERSING (ok, f, x::f', r, y::r')
+    REVERSING (ok + 1, f, x::f', r, y::r')
     | exec (REVERSING (ok, [], f', [y], r')) = APPENDING (ok, f', y::r')
     | exec (APPENDING (0, f', r')) = DONE r'
     | exec (APPENDING (ok, x::f', r')) = APPENDING (ok - 1, f', x::r')
