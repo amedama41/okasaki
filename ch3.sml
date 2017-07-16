@@ -168,9 +168,9 @@ struct
 
   fun removeMinTree [] = raise EMPTY
     | removeMinTree [t] = (t, [])
-    | removeMinTree [t::ts] =
-    let val (t', ts) = removeMinTree ts
-    in if Elem.leq (root t, root t') then (t, ts) else (t', t::ts) end
+    | removeMinTree (t::ts) =
+    let val (t', ts') = removeMinTree ts
+    in if Elem.leq (root t, root t') then (t, ts) else (t', t::ts') end
 
   fun findMin ts = let val (t, _) = removeMinTree ts in root t end
   fun deleteMin ts = let val (NODE (_, x, ts1), ts2) = removeMinTree ts
