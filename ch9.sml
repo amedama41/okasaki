@@ -249,3 +249,11 @@ struct
     else t'::update (i - size t1 - size t2, y, ts)
 end
 
+(* Exercise 9.6 *)
+(** Let k be the step for look for the tree including target element.
+  * 1 + 2 + ... + 2^(k - 1) < i => 2^k - 1 < i => k < log(i + 1).
+  * Because the size of the tree is 2^k - 1, which depth is k, the total cost
+  * is at most 2log(i + 1).
+  *
+  * *)
+
