@@ -257,3 +257,23 @@ end
   *
   * *)
 
+(* Exercise 9.7 *)
+functor RedBlackSet (Element : ORDERED) : SET =
+struct
+  type Elem = Element.T
+
+  datatype Tree = E | T of Tree * Elem * Tree
+  (* B and RB corresponds to ONE and TWO respectively. *)
+  datatype Node = B of Elem * Tree | RB of Elem * Tree * Elem * Tree
+  type Set = Node list
+
+  val empty = E
+  fun isEmpty ts = null ts
+
+  fun insTree ((x1, t1), B (x2, t2)::ts) = RB (x1, t1, x2, t2)
+    | insTree ((x1, t1), RB (x2, t2, x3, t4)::ts) =
+    B (x1, t1)::insTree ((x2, T (t2, x3, t3)), ts)
+
+  fun insert (x, ts) = insTree ((x, E), ts)
+end
+
