@@ -277,3 +277,14 @@ struct
   fun insert (x, ts) = insTree ((x, E), ts)
 end
 
+(* Exercise 9.8 *)
+(** If x has first continuous k TWOs, inc changes the k TWOs to the k ONEs.
+  * inc assigns 1 debt to the each ONE, and repays 1 debt for the ONE just after
+  * the TWOs if any.
+  * If y has first continuous k ZEROs, dec changes the k ZERO to the k ONES.
+  * dec assigns 1 debt to the each ONE and repays 1 debt for the ONE just after
+  * the ZEROs if any.
+  * Therefore, the invariant (only ONE has only one debt) holds, and the cost of
+  * inc and dec is O(1).
+  * *)
+
