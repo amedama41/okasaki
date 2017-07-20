@@ -288,3 +288,51 @@ end
   * inc and dec is O(1).
   * *)
 
+(* Exercise 9.9 *)
+structure RedundantZeroLessBinaryRandomAccessList : RANDOMACCESSLIST =
+struct
+  datatype 'a Tree = LEAF of 'a | NODE of int * 'a Tree * 'a Tree
+  datatype 'a Digit = ONE of 'a Tree
+                    | TWO of 'a Tree * 'a Tree
+                    | THREE of 'a Tree * 'a Tree * 'a Tree
+  type 'a RList = Digit Stream
+
+  val empty = $ NIL
+  fun isEmpty ($ NIL) = true | isEmpty _ = false
+
+  fun size (LEAF x) = 1
+    | size (NODE (w, t1, t2)) = w
+  fun link (t1, t2) = NODE (size t1 + size t2, t1, t2)
+  fun consTree (t1, $ NIL) = $ CONS (ONE t, $ NIL)
+    | consTree (t1, $ CONS (ONE t2, ts)) = $ CONS (TWO (t1, t2), ts)
+    | consTree (t1, $ CONS (TWO (t2, t3), ts)) =
+    $ CONS (THREE (t1, t2, t3), ts)
+    | consTree (t1, $ CONS (THREE (t2, t3, t4), ts)) =
+    $ CONS (TWO (t1, t2), consTree (link (t3, t4), ts))
+  fun unconsTree ($ NIL) = raise EMPTY
+    | unconsTree ($ CONS (ONE t, ts)) =
+    let
+      val (NODE (_, t1, t2), ts') = unconsTree ts
+    in (t, $ CONS (TWO (t1, t2), ts')) end
+    | unconsTree ($ CONS (TWO (t1, t2), ts)) = (t1, $ CONS (ONE t2, ts))
+    | unconsTree ($ CONS (THREE (t1, t2, t3), ts)) =
+    (t1, $ CONS (TWO (t2, t3), ts))
+
+  fun cons (x, ts) = consTree (LEAF x, ts)
+  fun head ($ NIL) = raise EMPTY
+    | head ($ CONS (ONE (LEAF x), ts)) = x
+    | head ($ CONS (TWO (LEAF x, LEAF y), ts)) = x
+    | head ($ CONS (THREE (LEAF x, LEAF y, LEAF z), ts)) = x
+  fun tail ts = let val (_, ts') = unconsTree ts in ts' end
+end
+(** Hypothesize TWO has a debt, and ONE and THREE has no debt.
+  * If x has first continuous k THREEs, cons changes the k THREEs to the k TWOs.
+  * cons assigns 1 debt to the each TWO, and repays 1 debt for the TWO just
+  * after the THREEs if any.
+  * If y has first continuous k ONEs, tail changes the k ONE to the k TWOS.
+  * tail assigns 1 debt to the each TWO and repays 1 debt for the TWO just after
+  * the ONEs if any.
+  * Therefore, the invariant holds, and the cost of cons and tail is O(1).
+  * head does not change a list, then the cost of head is also O(1).
+  * *)
+
