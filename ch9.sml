@@ -336,3 +336,65 @@ end
   * head does not change a list, then the cost of head is also O(1).
   * *)
 
+(* Exercise 9.10 *)
+structure ScheduledRedundantZeroLessBinaryRandomAccessList : RANDOMACCESSLIST =
+struct
+  datatype 'a Tree = LEAF of 'a | NODE of int * 'a Tree * 'a Tree
+  datatype 'a Digit = ONE of 'a Tree
+                    | TWO of 'a Tree * 'a Tree
+                    | THREE of 'a Tree * 'a Tree * 'a Tree
+  type Schedule = Digit Stream list
+  type 'a RList = Digit Stream * Schedule
+
+  val empty = ($ NIL, [])
+  fun isEmpty ($ NIL, _) = true | isEmpty _ = false
+
+  fun size (LEAF x) = 1
+    | size (NODE (w, t1, t2)) = w
+  fun link (t1, t2) = NODE (size t1 + size t2, t1, t2)
+  fun consTree (t1, $ NIL) = $ CONS (ONE t, $ NIL)
+    | consTree (t1, $ CONS (ONE t2, ts)) = $ CONS (TWO (t1, t2), ts)
+    | consTree (t1, $ CONS (TWO (t2, t3), ts)) =
+    $ CONS (THREE (t1, t2, t3), ts)
+    | consTree (t1, $ CONS (THREE (t2, t3, t4), ts)) =
+    $ CONS (TWO (t1, t2), consTree (link (t3, t4), ts))
+  fun unconsTree ($ NIL) = raise EMPTY
+    | unconsTree ($ CONS (ONE t, ts)) =
+    let
+      val (NODE (_, t1, t2), ts') = unconsTree ts
+    in (t, $ CONS (TWO (t1, t2), ts')) end
+    | unconsTree ($ CONS (TWO (t1, t2), ts)) = (t1, $ CONS (ONE t2, ts))
+    | unconsTree ($ CONS (THREE (t1, t2, t3), ts)) =
+    (t1, $ CONS (TWO (t2, t3), ts))
+
+  fun exec [] = []
+    | exec ($ CONS (TWO (t1, t2), ts)) = ts::sched
+    | exec (_::sched) = sched
+
+  fun cons (x, (ts, sched)) =
+    let val ts' = consTree (LEAF x, ts)
+    in (ts', exec (exec (ts'::sched))) end
+  fun head ($ NIL, []) = raise EMPTY
+    | head ($ CONS (ONE (LEAF x), ts), _) = x
+    | head ($ CONS (TWO (LEAF x, LEAF y), ts), _) = x
+    | head ($ CONS (THREE (LEAF x, LEAF y, LEAF z), ts), _) = x
+  fun tail (ts, sched) =
+    let val (_, ts') = unconsTree ts
+    in (ts', exec (exec (ts'::sched))) end
+
+(** Hypothesize there are two TWO elements before first range in schedule, and
+  * there is one TWO element between any neighbor schedule ranges.
+  *
+  * Let r1, r2 be the first two schedule range, and x1, x2 be the TWO elements,
+  * and x3 be the one TWO element between r1 and r2, and r0 is the new range
+  * created by cons or tail, and m be the number of TWO created by the cons or
+  * the tal.
+  * m=0: If first element of r1 is not TWO, the element becomes TWO, and x2 and
+  * the element are the two TWO elements. Otherwise, x2 and x3 are the TWO
+  * elements.
+  * m=1: The first element of r0 and x2 are the two TWO elements.
+  * m>=2: The first two element of r0 are the two TWO elements, and x2 is the
+  * one TWO element.
+  * *)
+end
+
