@@ -398,3 +398,87 @@ struct
   * *)
 end
 
+(* Exercise 9.11 *)
+functor SegmentedBinomialHeap (Element : ORDERED) : HEAP =
+struct
+  structure Elem = Element
+
+  datatype Tree = NODE of Elem.T * Tree list
+  datatype Digit = ZERO | ONES of Tree list | TWO of Tree * Tree
+  type Heap = Digit list
+
+  val empty = []
+  fun isEmpty ds = null ds
+
+  fun root (NODE (x, ts)) = x
+  fun link (t1 as NODE (x1, c1), t2 as NODE (x2, c2)) =
+    if Elem.leq (x1, x2) then NODE (x1, t2::c1) else NODE (x2, t1::c2)
+  fun ones ([], ds) = ds
+    | ones ([t], ONES ts::ds) = ONES (t::ts)::ds
+    | ones (ts, ds) = ONES ts::ds
+
+  fun insHeap (t, []) = [ONES [t]]
+    | insHeap (t, ZERO::ds) = ones ([t], ds)
+    | insHeap (t, ONES (t'::ts)::ds) = TWO (t, t')::ones (ts, ds)
+  fun fixup (TWO (t1, t2)::ds) = ZERO::insHeap (link (t1, t2), ds)
+    | fixup (ONES ts::TWO (t1, t2)::ds) =
+    ONES ts::ZERO::insHeap (link (t1, t2), ds)
+    | fixup ds = ds
+
+  fun insert (x, ds) = fixup (insHeap (NODE (x, []), ds))
+
+  fun insHeap' (t, []) = [ONES [t]]
+    | insHeap' (t, ZERO::ds) = ones ([t], ds)
+    | insHeap' (t, ONES (t'::ts)::ds) =
+    ZERO::insHeap' (link (t, t'), ones (ts, ds))
+  fun normalize [] = []
+    | normalize (ZERO::ds) = ZERO::normalize ds
+    | normalize (ONES ts::ds) = ONES ts::normalize ds
+    | normalize (TWO (t1, t2)::ds) =
+    ZERO::insHeap' (link (t1, t2), normalize ds)
+
+  fun merge (ds, []) = normalize ds
+    | merge ([], ds) = normalize ds
+    | merge (TWO (t1, t2)::ds1, TWO (t3, t4)::ds2) =
+    ZERO::insHeap' (link (t1, t2), insHeap' (link (t3, t4), merge (ds1, ds2)))
+    | merge (TWO (t1, t2)::ds1, d::ds2) =
+    d::insHeap' (link (t1, t2), merge (ds1, ds2))
+    | merge (d::ds1, TWO (t1, t2)::ds2) =
+    d::insHeap' (link (t1, t2), merge (ds1, ds2))
+    | merge (ONES (t1::ts1)::ds1, ONES (t2::ts2)::ds2) =
+    ZERO::insHeap' (link (t1, t2), merge (ones (ts1, ds1), ones (ts2, ds2)))
+    | merge (ZERO::ds1, ONES (t::ts)::ds2) = ones ([t], merge (ds1, ds2))
+    | merge (ONES (t::ts)::ds1, ZERO::ds2) = ones ([t], merge (ds1, ds2))
+    | merge (ZERO::ds1, ZERO::ds2) = ZERO::merge (ds1, ds2)
+
+  fun removeMinTree (ONES [t]) = (t, [ZERO])
+    | removeMinTree (ONES (t::ts)) =
+    let val (t', ts') = removeMinTree (ONES ts)
+    in if Elem.leq (root t, root t') then (t, ZERO::ONES ts)
+       else (t', ones ([t], ts'))
+    end
+  fun removeMinDigit [] = raise EMPTY
+    | removeMinDigit [d as (ONES ts)] = removeMinTree d
+    | removeMinDigit [TWO (t1, t2)] = (link (t1, t2), [])
+    | removeMinDigit ZERO::ds =
+    let val (t', ds') = removeMinDigit ds in (t', ZERO::ds') end
+    | removeMinDigit ((d as ONES ts)::ds) =
+    let
+      val (t, ds') = removeMinTree d
+      val (t', ds'') = removeMinDigit ds
+    in if Elem.leq (t, t') then (t, ZERO::ds'::ds) else (t', d::ds'') end
+    | removeMinDigit (TWO (t1, t2)::ds) =
+    let
+      val t3 = link (t1, t2)
+      val (t4, ds') = removeMinDigit ds
+    in if Elem.leq (root t3, root t4)
+       then (t3, ZERO::ds) else (t4, TWO (t1, t2)::ds')
+    end
+
+  fun findMin ds = let val (t, _) = removeMinDigit ds in root t end
+  fun deleteMin ds =
+  let
+    val (NODE (_, ts), ds') = removeMinDigit ds
+  in merge (ONES (rev ts), ds') end
+end
+
