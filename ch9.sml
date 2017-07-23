@@ -482,3 +482,37 @@ struct
   in merge (ONES (rev ts), ds') end
 end
 
+(* Exercise 9.12 *)
+structure Segmented =
+struct
+  datatype DigitBlock = ONES of int | THREES of int
+  datatype Digits = ZERO | TWO | FOUR | BLOCK of DigitBlock list
+  type Nat = Digits list
+
+  fun ones (0, [], ds) = ds
+    | ones (0, bs, ds) = BLOCK bs::ds
+    | ones (i, [], BLOCK bs::ds) = BLOCK (ONES i::bs)::ds
+    | ones (i, bs, ds) = BLOCK (ONES i::bs)::ds
+  fun threes (0, [], ds) = ds
+    | threes (0, bs, ds) = BLOCK bs::ds
+    | threes (i, [], BLOCK bs::ds) = BLOCK (THREES i::bs)::ds
+    | threes (i, bs, ds) = BLOCK (THREES i::bs)::ds
+
+  fun simpleinc [] = [BLOCK [ONES 1]]
+    | simpleinc (BLOCK (ONES i::bs)::ds) = TWO::ones (i - 1, bs, ds)
+    | simpleinc (TWO::ds) = threes (1, [], ds)
+    | simpleinc (BLOCK (THREES i::bs)::ds) = FOUR::threes (i - 1, bs, ds)
+  fun simpledec [BLOCK [ONES 1]] = []
+    | simpledec (BLOCK (ONES i::bs)::ds) = ZERO::ones (i - 1, bs, ds)
+    | simpledec (TWO::ds) = ones (1, [], ds)
+    | simpledec (BLOCK (THREES i::bs)::ds) = TWO::threes (i - 1, bs, ds)
+  fun fixup (FOUR::ds) = TWO::simpleinc ds
+    | fixup (BLOCK bs::FOUR::ds) = BLOCK bs::TWO::simpleinc ds
+    | fixup (ZERO::ds) = TWO::simpledec ds
+    | fixup (BLOCK bs::ZERO::ds) = BLOCK bs::TWO::simpledec ds
+    | fixup ds = ds
+
+  fun inc ds = fixup (simpleinc ds)
+  fun dec ds = fixup (simpledec ds)
+end
+
