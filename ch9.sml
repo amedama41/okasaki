@@ -516,3 +516,115 @@ struct
   fun dec ds = fixup (simpledec ds)
 end
 
+(* Exercise 9.13 *)
+structure SegmentedBinaryRandomAccessList : RANDOMACCESSLIST =
+struct
+  datatype 'a Tree = LEAF of 'a | NODE of int * 'a Tree * 'a Tree
+  datatype 'a DigitBlock = ONES of 'a Tree list
+                         | THREES of ('a Tree * 'a Tree * 'a Tree) list
+  datatype 'a Digits = ZERO
+                     | TWO of 'a Tree * 'a Tree
+                     | FOUR of 'a Tree * 'a Tree * 'a Tree * 'a Tree
+                     | BLOCK of 'a DigitBlock list
+  type 'a RList = 'a Digits list
+
+  val empty = []
+  fun isEmpty ts = null ts
+
+  fun size (LEAF x) = 1
+    | size (NODE (w, t1, t2)) = w
+  fun link (t1, t2) = NODE (size t1 + size t2, t1, t2)
+
+  fun ones ([], [], ds) = ds
+    | ones ([], bs, ds) = BLOCK bs::ds
+    | ones (ts, [], BLOCK bs::ds) = BLOCK (ONES ts::bs)::ds
+    | ones (ts, bs, ds) = BLOCK (ONES ts::bs)::ds
+  fun threes ([], [], ds) = ds
+    | threes ([], bs, ds) = BLOCK bs::ds
+    | threes (ts, [], BLOCK bs::ds) = BLOCK (THREES ts::bs)::ds
+    | threes (ts, bs, ds) = BLOCK (THREES ts::bs)::ds
+
+  fun consTree (t, []) = [BLOCK [ONES [t]]]
+    | consTree (t1, BLOCK (ONES (t2::ts)::bs)::ds) =
+    TWO (t1, t2)::ones (ts, bs, ds)
+    | consTree (t1, TWO (t2, t3)::ds) = threes ((t1, t2, t3), [], ds)
+    | consTree (t1, BLOCK (THREES ((t2, t3, t4)::ts)::bs)::ds) =
+    FOUR (t1, t2, t3, t4)::threes (ts, bs, ds)
+  fun unconsTree ([BLOCK [ONES [t]]]) = (t, [])
+    | unconsTree (BLOCK (ONES (t::ts)::bs)::ds) = (t, ZERO::ones (ts, bs, ds))
+    | unconsTree (TWO (t1, t2)::ds) = (t1, ones ([t2], [], ds))
+    | unconsTree (BLOCK (THREES ((t1, t2, t3)::ts)::bs)::ds) =
+    (t1, TWO (t2, t3)::threes (ts, bs, ds))
+  fun fixup (FOUR (t1, t2, t3, t4)::ds) =
+    TWO (t1, t2)::consTree (link (t3, t4), ds)
+    | fixup ((bs as BLOCK bs')::FOUR (t1, t2, t3, t4)::ds) =
+    bs::TWO (t1, t2)::consTree (link (t3, t4), ds)
+    | fixup (ZERO::ds) =
+    let val (NODE (_, t1, t2), ds') = unconsTree ds in TWO (t1, t2)::ds' end
+    | fixup ((bs as BLOCK bs')::ZERO::ds) =
+    let val (NODE (_, t1, t2), ds') = unconsTree ds in bs::TWO (t1, t2)::ds' end
+    | fixup ds = ds
+
+  fun cons (x, ds) = fixup (consTree (LEAF x, ds))
+  fun head (x, ds) = let val (LEAF x, _) = unconsTree ts in x end
+  fun tail ts = let val (_, ts') = unconsTree ts in fixup ts' end
+
+  fun lookupTree (0, LEAF x) = x
+    | lookupTree (i, NODE (w, t1, t2)) =
+    if i < w div 2 then lookupTree (i, t1)
+    else lookupTree (i - w div 2, t2)
+  fun lookupTwo (i, t1, t2) =
+    if i < size t1 then lookupTree (i, t1) else lookupTree (i - size t1, t2)
+  fun lookupThree (i, t1, t2, t3) =
+    if i < size t1 then lookupTree (i, t1) else lookupTwo (i - size t1, t2, t3)
+  fun lookupFour (i, t1, t2, t3, t4) =
+    if i < size t1 then lookupTree (i, t1)
+    else lookupTree (i - size t1, t2, t3, t4)
+
+  fun lookup (i, []) = raise SUBSCRIPT
+    | lookup (i, ZERO::ds) = lookup (i, ds)
+    | lookup (i, BLOCK (ONES (t::ts)::bs)::ds) =
+    if i < size t then lookupTree (i, t)
+    else lookup (i - size t, ones (ts, bs, ds))
+    | lookup (i, TWO (t1, t2)::ds) =
+    if i < 2 * size t1 then lookupTwo (i, t1, t2)
+    else lookup (i - size t1 - size t2, ds)
+    | lookup (i, BLOCK (THREES ((t1, t2, t3)::ts)::bs)::ds) =
+    if i < 3 * size t1 then lookupThree (i, t1, t2, t3)
+    else lookup (i - size t1 - size t2 - size t3, threes (ts, bs, ds))
+    | lookup (i, FOUR (t1, t2, t3, t4)::ds) =
+    if i < 4 * size t1 then lookupFour (i, t1, t2, t3, t4)
+    else lookup (i - size t1 - size t2 - size t3 - size t4, ds)
+
+  fun updateTree (0, y, LEAF x) = LEAF y
+    | updateTree (i, y, NODE (w, t1, t2)) =
+    if i < w div 2 then NODE (w, updateTree (i, y, t1), t2)
+    else NODE (w, t1, updateTree (i - w div 2, y, t2))
+  fun updateTwo (i, y, t1, t2) =
+    if i < size t1 then (updateTree (i, y, t1), t2)
+    else (t1, updateTree (i - size t1, y, t2))
+  fun updateThree (i, y, t1, t2, t3) =
+    if i < size t1 then (updateTree (i, y, t1), t2, t3)
+    else let val (t2', t3') = updateTwo (i - size t1, y, t2, t3)
+         in (t1, t2', t3') end
+  fun updateFour (i, y, t1, t2, t3, t4) =
+    if i < size t1 then (updateTree (i, y, t1), t2, t3, t4)
+    else let val (t2', t3', t4') = updateThree (i - size t1, y, t2, t3, t4)
+         in (t1, t2', t3', t4') end
+
+  fun update (i, y, []) = raise SUBSCRIPT
+    | update (i, y, ZERO::ds) = ZERO::update (i, y, ds)
+    | update (i, y, BLOCK (ONES (t::ts)::bs)::ds) =
+    if i < size t then ones (updateTree (i, y, t), bs, ds)
+    else ones ([t], [], update (i - size t, y, ones (ts, bs, ds)))
+    | update (i, y, (d as TWO (t1, t2))::ds) =
+    if i < 2 * size t1 then TWO (updateTwo (i, y, t1, t2))::ds
+    else d::update (i - size t1 - size t2, y, ds)
+    | update (i, y, BLOCK (THREES ((t as (t1, t2, t3))::ts)::bs)::ds) =
+    if i < 3 * size t1 then threes ([updateThree (i, y, t1, t2, t3)], bs, ds)
+    else threes ([t], [], update (i - 3 * size t1, y, threes (ts, bs, ds)))
+    | update (i, y, (d as FOUR (t1, t2, t3, t4))::ds) =
+    if i < 4 * size t1 then FOUR (updateFour (i, t1, t2, t3, t4))::ds
+    else d::update (i - size t1 - size t2 - size t3 - size t4, y, ds)
+end
+
