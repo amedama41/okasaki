@@ -628,3 +628,123 @@ struct
     else d::update (i - size t1 - size t2 - size t3 - size t4, y, ds)
 end
 
+(** 9.3 Skew Binary Numbers **)
+
+structure SkewBinaryRandomAccessList : RANDOMACCESSLIST =
+struct
+  datatype 'a Tree = LEAF of 'a | NODE of 'a * 'a Tree * 'a Tree
+  type 'a RList = (int * 'a Tree) list
+
+  val empty = []
+  fun isEmpty ts = null ts
+
+  fun cons (x, ts as (w1, t1)::(w2, t2)::ts') =
+    if w1 = w2 then (1 + w1 + w2, NODE (x, t1, t2))::ts'
+    else (1, LEAF x)::ts
+  fun head [] = raise EMPTY
+    | head ((1, LEAF x)::ts) = x
+    | head ((w, NODE (x, t1, t2))::ts) = x
+  fun tail [] = raise EMPTY
+    | tail ((1, LEAF x)::ts) = ts
+    | tail ((w, NODE (x, t1, t2))::ts) = (w div 2, t1)::(w div 2, ts)::ts
+
+  fun lookupTree (1, 0, LEAF x) = x
+    | lookupTree (w, 0, NODE (x, t1, t2)) = x
+    | lookupTree (w, i, NODE (x, t1, t2)) =
+    if i <= w div 2 then lookupTree (w div 2, i - 1, t1)
+    else lookupTree (w div 2, i - w div 2 - 1, t2)
+  fun updateTree (1, 0, y, LEAF x) = LEAF y
+    | updateTree (w, 0, y, NODE (x, t1, t2)) = NODE (x, t1, t2)
+    | updateTree (w, i, y, NODE (x, t1, t2)) =
+    if i <= w div 2 then updateTree (w div 2, i - 1, y, t1)
+    else updateTree (w div 2, i - w div - 1, y, t2)
+
+  fun lookup (i, []) = raise SUBSCRIPT
+    | lookup (i, (w, t)::ts) =
+    if i < w then lookupTree (w, i, t) else lookup (i - w, ts)
+  fun update (i, y, []) = raise SUBSCRIPT
+    | update (i, y, (w, t)::ts) =
+    if i < w then (w, updateTree (w, i, y, t))::ts
+    else (w, t)::update (i - w, y, ts)
+end
+
+(* Exercise 9.14 *)
+structure HoodMelvileQueueBySkewBinaryRandomAccessList : QUEUE =
+struct
+  type 'a L = 'a SkewBinaryRandomAccessList
+
+  datatype 'a RotationState =
+      IDLE
+    | REVERSING of int * 'a L.RList * 'a L.RList * int * 'a L.RList * 'a L.RList
+    | APPENDING of int * 'a L.RList * 'a L.RList
+    | DONE of 'a L.RList
+  type 'a Queue = int * int * 'a L * 'a RotationState * int * 'a L
+
+  val empty = (0, 0, L.empty, IDLE, 0, L.empty)
+  fun isEmpty (lenf1, lenf2, f, state, lenr, r) = (lenf1 = 0)
+
+  fun exec (REVERSING (ok, f, f', lenr, r, r')) = REVERSING (
+    ok + 1, L.tail f, L.cons (L.head f, f'),
+    lenr - 1, L.tail r, L.cons (L.head r, r'))
+    | exec (REVERSING (ok, L.empty, f', lenr, r, r')) =
+    APPENDING (ok, f', L.cons (L.head r, r'))
+    | exec (APPENDING (0, f', r')) = DONE r'
+    | exec (APPENDING (ok, f', r')) =
+    APPENDING (ok - 1, L.tail f', L.cons (L.head f', r'))
+    | exec state = state
+
+  fun invalidate (REVERSING (ok, f, f', lenr, r, r')) =
+    REVERSING (ok - 1, f, f', lenr, r, r')
+    | invalidate (APPENDING (0, f', r')) = DONE (L.tail r')
+    | invalidate (APPENDING (ok, f', r')) = APPENDING (ok - 1, f', r')
+    | invalidate state = state
+
+  fun exec2 (lenf1, lenf2, f, state, lenr, r) =
+    case exec (exec state) of
+         DONE newf => (lenf1, lenf1, newf, IDLE, lenr, r)
+       | newstate => (lenf1, lenf2, f, newstate, lenr, r)
+
+  fun check (q as (lenf1, lenf2, f, state, lenr, r)) =
+    if lenr <= lenf1 then exec2 q
+    else let val newstate = REVERSING (0, f, [], lenr, r, L.empty)
+         in exec2 (lenf1 + lenr, lenf2, f, newstate, 0, L.empty) end
+
+  fun snoc ((lenf1, lenf2, f, state, lenr, r), x) =
+    check (lenf1, lenf2, f, state, lenr + 1, L.cons (x, r))
+  fun head (lenf1, lenf2, f, state, lenr, r) = L.head f
+  fun tail (lenf1, lenf2, f, state, lenr, r) =
+    check (lenf - 1, lenf2 - 1, L.tail f, invalidate state, lenr, r)
+
+  fun lookupState (i, lenf, REVERSING (ok, f, f', lenr, r, r')) =
+    if i - lenf < lenr then L.lookup (lenr - (i - lenf) - 1, r)
+    else L.lookup (i - lenf - lenr, r')
+    | lookupState (i, lenf, APPENDING (ok, f', r')) = L.lookup (i - ok, r')
+    | lookupState (i, lenf, DONE newf) = L.lookup (i, newf)
+  fun updateState (i, y, lenf, IDLE) = IDLE
+    | updateState (i, y, lenf, REVERSING (ok, f, f', lenr, r, r')) =
+    if i < ok then REVERSING (ok, f, L.update (ok - i - 1, y, f'), lenr, r, r')
+    else if i < lenf
+    then REVERSING (ok, L.update (i - ok, y, f), f', lenr, r, r')
+    else if i - lenf < lenr
+    then REVERSING (ok, f, f', lenr, L.update (lenr - (i - lenf) - 1, y, r), r')
+    else REVERSING (ok, f, f', lenr, r, L.update (i - lenf - lenr, y, r'))
+    | updateState (i, y, lenf, APPENDING (ok, f', r')) =
+    if i < ok then APPENDING (ok, L.update (ok - i - 1, y, f'), r')
+    else APPENDING (ok, f', L.update (i - ok, y, r'))
+    | updateState (i, y, lenf, DONE newf) = DONE (L.update (i, y, newf))
+
+  fun lookup (i, (lenf1, lenf2, f, state, lenr, r)) =
+    if i < lenf2 then lookup (i, lenf2, f)
+    if i < lenf1 then lookupState (i, lenf1, state)
+    else if i - lenf1 < lenr then L.lookup (lenr - (i - lenf1) - 1, r)
+    else raise SUBSCRIPT
+  fun update (i, y, (lenf1, lenf2, f, state, lenr, r)) =
+    if i < lenf1
+    then (lenf1, lenf2, L.update (i, y, f), updateState (i, y, state), lenr, r)
+    else if i < lenf2
+    then (lenf1, lenf2, f, updateState (i, y, state), lenr, r)
+    else if i - lenf1 < lenr
+    then (lenf1, lenf2, f, state, lenr, L.update (lenr - (i - lenf1) - 1, y, r))
+    else raise SUBSCRIPT
+end
+
