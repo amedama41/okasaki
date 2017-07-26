@@ -748,3 +748,12 @@ struct
     else raise SUBSCRIPT
 end
 
+(* Exercise 9.15 *)
+(** Let E(r) be the upper of the element numbers. When r=0, E(r)=|t|=1.
+  * E(r) = 2E(r - 1) + 1
+  * E(r) + 1 = 2(E(r - 1) + 1)
+  *          = 2^r(E(0) + 1)
+  *          = 2^(r + 1)
+  * E(r) = 2^(r + 1) + 1
+  * *)
+
