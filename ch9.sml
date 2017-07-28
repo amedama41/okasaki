@@ -838,3 +838,66 @@ struct
   fun delete (x, (h1, h2)) = normalize (h1, H.insert (x, h2))
 end
 
+(** 9.4 Trinary and Quaternary Numbers **)
+
+(* Exercise 9.17 *)
+functor TrinomialHeap (Element: ORDERED) : HEAP =
+struct
+  structure Elem = Element
+
+  datatype Tree = NODE of Elem.T * (Tree * Tree) list
+  datatype Digit = ZERO | ONE of Tree | TWO of Tree * Tree
+  type Heap = Digit list
+
+  val empty = []
+  fun isEmpty ts = null ts
+
+  fun root (NODE (x, c1, c2)) = x
+  fun link (t1 as NODE (x1, c1, c2), t2, t3) =
+    let
+      val (t2' as NODE (x2, c3, c4), t3') =
+        if Elem.leq (root t2, root t3) then (t2, t3) else (t3, t2)
+    in if Elem.leq (x1, x2) then NODE (x1, t2'::c1, t3'::c2)
+       else NODE (x2, t1::c3, t3'::c4)
+    end
+  fun insTree (t, []) = [ONE t]
+    | insTree (t, ZERO::ts) = ONE t::ts
+    | insTree (t1, ONE t2::ts) = TWO (t1, t2)::ts
+    | insTree (t1, TWO (t2, t3)::ts) = ZERO::insTree (link (t1, t2, t3), ts)
+
+  fun insert (x, ts) = insTree (NODE (x, [], []), ts)
+  fun merge (ts1, []) = ts1
+    | merge ([], ts2) = ts2
+    | merge (TWO (t1, t2)::ts1, TWO (t3, t4)::ts2) =
+    ONE t1::insTree (link (t2, t3, t4), merge (ts1, ts2))
+    | merge (ONE t1::ts1, TWO (t2, t3)::ts2) =
+    ZERO::insTree (link (t1, t2, t3), merge (ts1, ts2))
+    | merge (TWO (t1, t2)::ts1, ONE t3::ts) =
+    ZERO::insTree (link (t1, t2, t3), merge (ts1, ts2))
+    | merge (ONE t1::ts1, ONE t2::ts2) = TWO (t1, t2)::merge (ts1, ts2)
+    | merge (ZERO::ts1, t::ts2) = t::merge (ts1, ts2)
+    | merge (t::ts1, ZERO::ts2) = t::merge (ts1, ts2)
+
+  fun removeMinTree [] = raise EMPTY
+    | removeMinTree [ONE t] = (t, [])
+    | removeMinTree [TWO (t1, t2)] =
+    if Elem.leq (root t1, root t2) then (t1, ONE t2) else (t2, ONE t1)
+    | removeMinTree (ZERO::ts) =
+    let val (t', ts') = removeMinTree ts in (t', ZERO::ts') end
+    | removeMinTree (ONE t::ts) =
+    let val (t', ts') = removeMinTree ts
+    in if Elem.leq (t, t') then (t, ZERO::ts) else (t', ONE t::ts') end
+    | removeMinDigit ((t as TWO (t1, t2))::ts) =
+    let
+      val (t', ts') = removeMinTree ts
+      val (t1', t2') = if Elem.leq (t1, t2) then (t1, t2) else (t2, t1)
+    in if Elem.leq (t1', t') then (t1', ONE t2'::ts) else (t', t::ts') end
+  fun toHeap ([], [], ts) = ts
+    | toHeap (t1::ts1, t2::ts2, ts) = toHeap (ts1, ts2, TWO (t1, t2)::ts)
+
+  fun findMin ts = let val (t, _) = removeMinTree ts in root t end
+  fun deleteMin ts =
+    let val (NODE (_, x, ts1, ts2), ts3) = removeMinTree ts
+    in merge (toHeap (ts1, ts2, empty), ts3) end
+end
+
