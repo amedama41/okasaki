@@ -901,3 +901,62 @@ struct
     in merge (toHeap (ts1, ts2, empty), ts3) end
 end
 
+(* Exercise 9.18 *)
+structure ZeroLessQuaternaryRandomAccessList : RANDOMACCESSLIST =
+struct
+  datatype 'a Tree = LEAF of 'a | NODE of 'a Tree vector
+  type 'a RList = 'a Tree vector list
+
+  val empty = []
+  fun isEmpty vs = null vs
+
+  fun consTree (t, []) = [#[t]]
+    | consTree (t, v::vs) =
+    if Vector.length v = 4 then #[t]::consTree (NODE v, vs)
+    else Vector.concat ([#[t], v])::vs
+  fun unconsTree [] = raise EMPTY
+    | unconsTree (v::vs) =
+    if Vector.length v = 1
+    then let (t, vs') = unconsTree vs in (Vector.sub (v, 0), #[t]::vs) end
+    else (Vector.sub (v, 0), Vector.extract (v, 1, NONE)::vs)
+
+  fun cons (x, vs) = consTree (LEAF x, ts)
+  fun head [] = raise EMPTY
+    | head (v::vs) = Vector.sub (v, 0)
+  fun tail vs = let val (_, vs') = unconsTree vs in vs' end
+
+  fun lookupVec (v, i) = let (NODE v') = Vector.sub (v, i) in v' end
+  fun lookupTree (1, i, v) = let val (LEAF x) = Vector.sub (v, i) in x end
+    | lookupTree (w, i, v) =
+    if i < w then lookupTree (w div 4, i, lookupVec (v, 0))
+    else if i < 2 * w then lookupTree (w div 4, i - w, lookupVec (v, 1))
+    else if i < 3 * w then lookupTree (w div 4, i - 2 * w, lookupVec (v, 2))
+    else lookupTree (w div 4, i - 3 * w, lookupVec (v, 3))
+  fun updateVec (v, i, x) =
+    Vector.mapi (fn (j, y) => if j = i then x else y) (v, 0, NONE)
+  fun updateTree (1, i, y, v) = Vector.update (v, i, x)
+    | updateTree (w, i, y, v) =
+    if i < w
+    then updateVec (v, 0, updateTree (w div 4, i, lookupVec (v, 0)))
+    if i < 2 * w
+    then updateVec (v, 1, updateTree (w div 4, i - w, lookupVec (v, 1)))
+    if i < 3 * w
+    then updateVec (v, 2, updateTree (w div 4, i - 2 * w, lookupVec (v, 2)))
+    else updateVec (v, 3, updateTree (w div 4, i - 3 * w, lookupVec (v, 3)))
+
+  fun lookup (i, vs) =
+    let
+      fun aux (w, i, []) = raise SUBSCRIPT
+    | fun aux (w, i, v::vs) =
+    if i < w * Vector.length v then lookupTree (w, i, v)
+    else lookup (4 * w, i - w * Vector.length v, vs)
+    in aux (1, i, vs) end
+  fun update (i, y, vs) =
+    let
+      fun aux (w, i, y, []) = raise SUBSCRIPT
+    | fun aux (w, i, y, v::vs) =
+    if i < w * Vector.length v then updateTree (w, i, y, v)::vs
+    else v::update (4 * w, i - w * Vector.length v, y, vs)
+    in aux (1, i, y, vs) end
+end
+
