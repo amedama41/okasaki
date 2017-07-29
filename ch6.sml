@@ -81,7 +81,7 @@ struct
     else NODE (r + 1, x2, t1::c2)
   fun insTree (t, []) = [t]
     | insTree (t, ts as t'::ts') =
-    if rank t < rank t' then t::ts else insTree (link (t t'), ts')
+    if rank t < rank t' then t::ts else insTree (link (t, t'), ts')
 
   fun mrg (ts1, $ []) = ts1
     | mrg ($ [], ts2) = ts2
@@ -96,8 +96,8 @@ struct
   fun removeMinTree [] = raise EMPTY
     | removeMinTree [t] = (t, [])
     | removeMinTree [t::ts] =
-    let val (t', ts) = removeMinTree ts
-    in if Elem.leq (root t, root t') then (t, ts) else (t', t::ts) end
+    let val (t', ts') = removeMinTree ts
+    in if Elem.leq (root t, root t') then (t, ts) else (t', t::ts') end
 
   fun findMin ($ ts) = let val (t, _) = removeMinTree ts in root t end
   fun lazy deleteMin ($ ts) =
