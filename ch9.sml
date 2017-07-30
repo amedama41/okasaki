@@ -960,3 +960,47 @@ struct
     in aux (1, i, y, vs) end
 end
 
+(* Exercise 9.19 *)
+structure SkewTrinomialRandomAccessList : RANDOMACCESSLIST =
+struct
+  datatype 'a Tree = LEAF of 'a | NODE of 'a * 'a Tree * 'a Tree * 'a Tree
+  type 'a RList = (int * 'a Tree) list
+
+  val empty = []
+  fun isEmpty ts = null ts
+
+  fun cons (x, ts as (w1, t1)::(w2, t2)::(w3, t3)::ts') =
+    if w1 = w2 and w2 = w3 then (1 + 3 * w1, NODE (x, t1, t2, t3))::ts'
+    else (1, LEAF x)::ts
+  fun head [] = raise EMPTY
+    | head ((1, LEAF x)::ts) = x
+    | head ((w, NODE (x, t1, t2, t3))::ts) = x
+  fun tail [] = raise EMPTY
+    | tail ((1, LEAF x)::ts) = ts
+    | tail ((w, NODE (x, t1, t2, t3))::ts) =
+    (w div 3, t1)::(w div 3, t2)::(w div 3, t3)::ts
+
+  fun lookupTree (1, 0, LEAF x) = x
+    | lookupTree (w, 0, NODE (x, t1, t2, t3)) = x
+    | lookupTree (w, i, NODE (x, t1, t2, t3)) =
+    if i <= w div 3 then lookupTree (w div 3, i - 1, t1)
+    else if i < 2 * (w div 3) then lookupTree (w div 3, i - div 3 - 1, t2)
+    else lookupTree (w div 3, i - 2 * div 3 - 1, t3)
+  fun updateTree (1, 0, y, LEAF x) = LEAF y
+    | updateTree (w, 0, y, NODE (x, t1, t2, t3)) = NODE (y, t1, t2, t3)
+    | updateTree (w, i, y, NODE (x, t1, t2, t3)) =
+    if i <= w div 3
+    then NODE (x, updateTree (w div 3, i - 1, y, t1), t2, t3)
+    if i <= 2 * (w div 3)
+    then NODE (x, t1, updateTree (w div 3, i - w div 3 - 1, t2), t3)
+    else NODE (x, t1, t2, updateTree (w div 3, i - 2 * div 3 - 1, t3))
+
+  fun lookup (i, []) = raise SUBSCRIPT
+    | lookup (i, (w, t)::ts) =
+    if i < w then lookupTree (w, i, t) else lookupTree (i - w, ts)
+  fun update (i, y, []) = raise SUBSCRIPT
+    | update (i, y, (w, t)::ts) =
+    if i < w then (w, updateTree (w, i, y, t))::ts
+    else (w, t)::update (i - w, y, ts)
+end
+
