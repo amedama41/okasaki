@@ -107,3 +107,34 @@ struct
   (** Proof is same as exercise 9.9 *)
 end
 
+structure BootstrappedQueue : QUEUE =
+struct
+  datatype 'a Queue = E
+                    | Q of int * 'a list * 'a list susp Queue * int * 'a list
+
+  val empty = E
+  fun isEmpty E = true | isEmpty _ = false
+
+  fun checkQ (q as (lenfm, f, m, lenr, r)) =
+    if lenr <= lenfm then checkF q
+    else checkF (lenfm + lenr, f, snoc (m, $ rev r), 0, [])
+  and checkF (lenfm, [], E, lenr, r) = E
+    | checkF (lenfm, [], m, lenr, r) =
+    Q (lenfm, force (head m), tail m, lenr, r)
+    | checkF q = q
+  and snoc (E, x) = (1, [x], E, 0, [])
+    | snoc (Q (lenfm, f, m, lenr, r), x) = checkQ (lenfm, f, m, lenr + 1, x::r)
+  and head E = raise EMPTY
+    | head (Q (lenfm, x::f', m, lenr, r)) = x
+  and tail E = raise EMPTY
+    | tail (Q (lenfm, x::f', m, lenr, r)) = checkQ (lenfm - 1, f', m, lenr, r)
+end
+
+(* Exercise 10.3 *)
+(** tail(snoc(q, x))
+  * If snoc (q, x) calls snoc recursively, lenfm and lenr after the call is
+  * lenfm + lenr (>= 2) and 0 respectively. Just because tail  subtracts 1 from
+  * the lenfm, lenfm is still larger than lenr and snoc is not called.
+  *
+  * *)
+
