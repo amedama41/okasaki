@@ -138,3 +138,35 @@ end
   *
   * *)
 
+(* Exercise 10.4 *)
+structure BootstrappedQueue' : QUEUE =
+struct
+  datatype 'a EL = ELEM of 'a | LIST of 'a EL list susp
+  datatype 'a Queue = E | Q of int * 'a EL list * 'a Queue * int * 'a EL list
+
+  val empty = E
+  fun isEmpty E = true | isEmpty _ = false
+
+  fun checkQ (q as (lenfm, f, m, lenr, r)) =
+    if lenr <= lenfm then checkF q
+    else checkF (lenfm + lenr, f, snocList (m, $ rev r), 0)
+  and checkF (lenfm, [], E, lenr, r) = E
+    | checkF (lenfm, [], m, lenr, r) =
+    Q (lenfm, force (headList f), checkQ (tailList m), lenr, r)
+    | checkF q = q
+  and snocList (E, x) = checkQ (1, [LIST x], E, 0, [])
+    | snocList (Q (lenfm, f, m, lenr, r)) =
+    checkQ (lenfm, f, m, lenr + 1, LIST x::r)
+  and headList (Q (lenfm, LIST x::f, m, lenr, r)) = x
+  and tailList (Q (lenfm, LIST x::f, m, lenr, r)) =
+    checkQ (lenfm - 1, f, m, lenr, r)
+
+  fun snoc (E, x) = Q (1, [ELEM x], E, 0, [])
+    | snoc (Q (lenfm, f, m, lenr, r)) = checkQ (lenfm, f, m, lenr + 1, x::r)
+  fun head E = raise EMPTY
+    | head (Q (lenfm, ELEM x::f, m, lenr, r)) = x
+  fun tail E = raise EMPTY
+    | tail (Q (lenfm, ELEM x::f, m, lenr, r)) =
+    checkQ (lenfm - 1, f, m, lenr, r)
+end
+
