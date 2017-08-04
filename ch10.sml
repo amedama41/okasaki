@@ -170,3 +170,46 @@ struct
     checkQ (lenfm - 1, f, m, lenr, r)
 end
 
+(* Exercise 10.5 *)
+functor BootstrapQueue (PrimQ : QUEUE) : QUEUE =
+struct
+  datatype 'a Queue = E
+                    | Q of int * 'a list * 'a list susp PrimQ * int * 'a list
+
+  val empty = E
+  fun isEmpty E = true | isEmpty _ = false
+
+  fun checkQ (q as (lenfm, f, m, lenr, r)) =
+    if lenr <= lenfm then checkF q
+    else checkF (lenfm + lenr, f, PrimQ.snoc (m, $ rev r), 0, [])
+  and checkF (lenfm, [], PrimQ.empty, lenr, r) = E
+    | checkF (lenfm, [], m, lenr, r) =
+    Q (lenfm, force (PrimQ.head m), PrimQ.tail m, lenr, r)
+
+  fun snoc (E, x) = Q (1, [x], PrimQ.empty, 0, [])
+    | snoc (Q (lenfm, f, m, lenr, r), x) = checkQ (lenfm, f, m, lenr + 1, x::r)
+  fun head E = raise EMPTY
+    | head (Q (lenfm, x::f, m, lenr, r)) = x
+  fun tail E = raise EMPTY
+    | tail (Q (lenfm, x::f, m, lenr, r)) = checkQ (lenfm - 1, f, m, lenr, r)
+end
+(** Let D(i) = min(2i, |f| + |m| - |r|), hypothesize the total cost until ith
+  * element is not greater than D(i).
+  *
+  * Though snoc increments |r| by 1, the invariant is hold if snoc repays 1
+  * debt. Though tail decrements i by 1, the invariant is hold if tail repays
+  * 2 debts.
+  * When snoc results in rotation, the (|f| + |m| - 1)th element is assigned
+  * |f| + |m| + 1 debts. Then d(i) = 0 (i < |f| + |m| - 1 or i >= |f| + |m|) or
+  * |f| + |m| + 1 (i = |f| + |m| - 1), and D(i) = 0 (i < |f| + |m| - 1) or
+  * |f| + |m| + 1 (i >= |f| + |m| - 1). If this snoc repays 3 debt, the
+  * invariant is hold.
+  * When tail results in rotation, the invariant is hold if the tail repays 3
+  * debt.
+  *
+  * If PrimQ is RealTimeQueue, the complexity of PrimQ.snoc, PrimQ.head, and
+  * PrimQ.tail is O(1). Therefore, the amortized cost of snoc, head, and tail
+  * of BootstrapQueue is O(1).
+  *
+  * *)
+
