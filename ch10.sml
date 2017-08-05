@@ -213,3 +213,64 @@ end
   *
   * *)
 
+(** 10.2 Structural Abstraction **)
+
+signature CATENABLELIST =
+sig
+  type 'a Cat
+
+  val empty : 'a Cat
+  val isEmpty : 'a Cat -> bool
+
+  val cons : 'a * 'a Cat -> 'a Cat
+  val snoc : 'a Cat * 'a -> 'a Cat
+  val ++ : 'a Cat * 'a Cat -> 'a Cat
+
+  val head : 'a Cat -> 'a
+  val tail : 'a Cat -> 'a Cat
+end
+
+functor CatanableList (Q : QUEUE) : CATENABLELIST =
+struct
+  datatype 'a Cat = E | C of 'a * 'a Cat susp Q.Queue
+
+  val empty = E
+  fun isEmpty E = true | isEmpty _ = false
+
+  fun link (C (x, q), s) = C (x, Q.snoc (q, s))
+  fun linkAll (q) =
+    let
+      val $ t = Q.head q
+      val q' = Q.tail q
+    in if Q.isEmpty q' then E else link (t, $ linkAll q') end
+
+  fun xs ++ E = xs
+    | E ++ xs = xs
+    | xs ++ ys = link (xs, & ys)
+  fun cons (x, xs) = C (x, Q.empty) ++ xs
+    | snoc (xs, x) = xs ++ C (x, Q.empty)
+
+  fun head E = raise EMPTY
+    | head C (x, q) = x
+  fun tail E = raise EMPTY
+    | tail (C (x, q)) = if Q.isEmpty q then E else linkAll q
+
+  (* Exercise 10.6 *)
+  fun flatten [] = E
+    | flatten (E::xs) = flatten xs
+    | flatten (x::xs) = link (x, $ flatten xs)
+  (** Let n be sum_(j=0){|t_j|}. Assign one debt for each non-empty t_j, and
+    * repays the last non-empty t's debt. Therefore,
+    *
+    *   D(n + i)
+    *       = n + D_(t_(j+1))(i) + j
+    *       = n + i + depth_(t_(j+1))(i) + j
+    *       = n + i + depth_t(n + i) - j + j
+    *       = (n + i) + depth_t(n + i).
+    *
+    * Because the unshared cost of flatten is O(1 + e), then the amortized cost
+    * is O(1 + e).
+    *
+    * *)
+end
+
