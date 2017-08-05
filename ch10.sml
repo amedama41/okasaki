@@ -43,7 +43,7 @@ struct
     | fupdate (f, 0, ONE (x, ps)) = ONE (f x, ps)
     | fupdate (f, i, ONE (x, ps)) = cons (x, fupdate (f, i - 1, ZERO ps))
     | fupdate (f, i, ZERO ps) =
-    let fun f' (x, y) = if i mod 2 then (f x, y) else (x, f y)
+    let fun f' (x, y) = if i mod 2 = 0 then (f x, y) else (x, f y)
     in ZERO (fupdate (f', i div 2, ps)) end
 
   fun update (i, y, xs) = fupdate (fn x => y, i, xs)
