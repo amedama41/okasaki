@@ -274,3 +274,91 @@ struct
     * *)
 end
 
+functor Bootstrap (functor MakeH (Element : ORDERED)
+                              : HEAP where type Elem.T = Element.T)
+                  (Element : ORDERED) : HEAP =
+struct
+  structure Elem = Element
+
+  structure rec BootstrapedElem =
+  struct
+    datatype T = E | H of Elem.T * PrimH.Heap
+    fun leq (H (x, _), H (y, _)) = Elem.leq (x, y)
+    fun eq (H (x, _), H (y, _)) = Elem.eq (x, y)
+    fun lt (H (x, _), H (y, _)) = Elem.lt (x, y)
+  end
+  and PrimH = MakeH (BootstrapedElem)
+
+  open BootstrapedElem
+
+  type Heap = BootstrapedElem.T
+
+  val empty = E
+  fun isEmpty E = true | isEmpty _ = false
+
+  fun merge (E, h) = h
+    | merge (h, E) = h
+    | merge (h1 as H (x, p1), h2 as H (y, p2)) =
+    if Elem.leq (x, y) then H (x, PrimH.insert (h2, p1))
+    else H (y, PrimH.insert (h1, p2))
+  fun insert (x, h) = merge (H (x, PrimH.empty), h)
+
+  fun findMin E = raise EMPTY
+    | findMin (H (x, _)) = x
+  fun deleteMin E = raise EMPTY
+    | deleteMin (H (x, p)) =
+    if PrimH.isEmpty p then E
+    else
+      let
+        val (H (y, p1)) = PrimH.findMin p
+        val p2 = PrimH.deleteMin p
+      in H (y, PrimH.merge (p1, p2)) end
+end
+
+(* Exercise 10.7 *)
+functor BootstrappedLazyBinomialHeap (Element : ORDERED) : HEAP =
+struct
+  structure Element = Element
+
+  datatype Tree = NODE of int * Heap * Tree list
+  datatype Heap = E | H of Elem.T * Tree list susp
+
+  val empty = E
+  fun isEmpty E = true | isEmpty _ = false
+
+  fun rank (NODE (r, x, c)) = r
+  fun root (NODE (r, H (x, p), c)) = x
+  fun link (t1 as NODE (r, H (x1, p1), c1), t2 as NODE (_, H (x2, p2), c2)) =
+    if Elem.leq (x1, x2) then NODE (r + 1, H (x1, p1), t2::c1)
+    else NODE (r + 1, H (x2, p2), t1::c2)
+  fun insTree (t, []) = [t]
+    | insTree (t, ts as t'::ts') =
+    if rank t < rank t' then t::ts else insTree (link (t, t'), ts')
+
+  fun mrg (ts1, $ []) = ts1
+    | mrg ($ [], ts2) = ts2
+    | mrg (ts1 as t1::ts1', ts2 as t2::ts2') =
+    if rank t1 < rank t2 then t1::mrg (ts1', ts2)
+    else if rank t2 < rank t1 then t2::mrg (ts1, ts2')
+    else insTree (link (t1, t2), mrg (ts1', ts2'))
+
+  fun merge (E, h) = h
+    | merge (h, E) = h
+    | merge (h1 as H (x, p1), h2 as H (y, p2)) =
+    if Elem.leq (x, y) then H (x, $ insTree (NODE (0, h2, []), force p1))
+    else H (y, $ insTree (NODE (0, h1, []), force p2))
+  fun insert (x, h) = merge (H (x, $ []), h)
+
+  fun removeMinTree [t] = (t, [])
+    | removeMinTree [t::ts] =
+    let val (t', ts') = removeMinTree ts'
+    in if Elem.leq (root t, root t') then (t, ts) else (t', t::ts') end
+
+  fun findMin E = raise
+    | findMin (H (x, _)) = x
+  fun deleteMin E = raise EMPTY
+    | deleteMin (H (x, $ [])) = E
+    | deleteMin (H (x, $ p)) =
+    let val (H (y, p1), p2) = removeMinTree p in H (y, $ mrg (p1, p2)) end
+end
+
