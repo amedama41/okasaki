@@ -362,3 +362,150 @@ struct
     let val (H (y, p1), p2) = removeMinTree p in H (y, $ mrg (p1, p2)) end
 end
 
+signature HEAPWITHINFO =
+sig
+  structure Priority : ORDERED
+
+  type 'a Heap
+
+  val empty : 'a Heap
+  val isEmpty : 'a Heap -> bool
+
+  val insert : Priority.T * 'a * 'a Heap -> 'a Heap
+  val merge : 'a Heap * 'a Heap -> 'a Heap
+
+  val findMin : 'a Heap -> Priority.T * 'a
+  val deleteMin : 'a Heap -> 'a Heap
+end
+
+(* Exercise 10.8 *)
+functor LazyBinomialHeapWithInfo (PriorityElement : ORDERED) : HEAPWITHINFO =
+struct
+  structure Priority = PriorityElement
+
+  datatype 'a Tree = NODE of int * Priority.T * 'a * Tree list
+  type Heap = 'a Tree list susp
+
+  val empty = $ []
+  fun isEmpty ($ ts) = null ts
+
+  fun rank (NODE (r, p, x, c)) = r
+  fun priority (NODE (r, p, x, c)) = p
+  fun root (NODE (r, p, x, c)) = (p, x)
+  fun link (t1 as NODE (r, p1, x1, c1), t2 as NODE (_, p2, x2, c2)) =
+    if Priority.leq (p1, p2) then NODE (r + 1, p1, x1, t2::c1)
+    else NODE (r + 1, p2, x2, t1::c2)
+  fun insTree (t, []) = [t]
+    | insTree (t, ts as t'::ts') =
+    if rank t < rank t' then t::ts else insTree (link (t, t'), ts')
+
+  fun mrg (ts1, $ []) = ts1
+    | mrg ($ [], ts2) = ts2
+    | mrg (ts1 as t1::ts1', ts2 as t2::ts2') =
+    if rank t1 < rank t2 then t1::mrg (ts1', ts2)
+    else if rank t2 < rank t1 then t2::mrg (ts1, ts2')
+    else insTree (link (t1, t2), mrg (ts1', ts2'))
+
+  fun lazy insert (p, x, $ ts) = $ insTree (NODE (0, p, x, []), ts)
+  fun lazy merge ($ ts1, $ ts2) = $ mrg (ts1, ts2)
+
+  fun removeMinTree [] = raise EMPTY
+    | removeMinTree [t] = (t, [])
+    | removeMinTree [t::ts] =
+    let val (t', ts') = removeMinTree ts
+    in if Elem.leq (priority t, priority t') then (t, ts) else (t', t::ts') end
+
+  fun findMin ($ ts) = let val (t, _) = removeMinTree ts in root t end
+  fun lazy deleteMin ($ ts) =
+    let val (NODE (_, p, x, ts1), ts2) = removeMinTree ts
+    in $ mrg (rev ts1, ts2) end
+end
+
+functor SkewBinomialHeapWithInfo (PriorityElement : ORDERED) : HEAPWITHINFO =
+struct
+  structure Priority = PriorityElement
+  datatype 'a Tree =
+    NODE of int * Priority.T * 'a * (Priority.T * 'a) list * Tree list
+  type Heap = Tree list
+
+  val empty = []
+  fun isEmpty ts = null ts
+
+  fun rank (NODE (r, xp, x, xs, c)) = r
+  fun priority (NODE (r, xp, x, xs, c)) = xp
+  fun root (NODE (r, xp, x, xs, c)) = (xp, x)
+  fun link (t1 as NODE (r, p1, x1, xs1, c1), t2 as NODE (_, p2, x2, xs2, c2)) =
+    if Priority.leq (p1, p2) then NODE (r + 1, p1, x1, xs1, t2::c1)
+    else NODE (r + 1, p2, x2, xs2, t1::c2)
+  fun skewLink (xp, x, t1, t2) =
+    let val NODE (r, yp, y, ys, c) = link (t1, t2)
+    in
+      if Priority.leq (xp, yp) then NODE (r, xp, x, (yp, y)::ys, c)
+      else NODE (r, y, (xp, x)::ys, c)
+    end
+
+  fun insTree (t, []) = [t]
+    | insTree (t1, t2::ts) =
+    if rankd t1 < rank t2 then t1::t2::ts else insTree (link (t1, t2), ts)
+  fun mergeTrees (ts1, []) = ts1
+    | mergeTrees ([], ts2) = ts2
+    | mergeTrees (ts1 as t1::ts1', ts2 as t2::ts2') =
+    if rank t1 < rank t2 then t1::mergeTrees (ts1', ts2)
+    else if rank t2 < rank t1 then t2::mergeTrees (ts1, ts2')
+    else insTree (link (t1, t2), mergeTrees (ts1', ts2'))
+  fun normalize [] = []
+    | normalize (t::ts) = insTree (t, ts)
+
+  fun insert (xp, x, ts as t1::t2::rest) =
+    if rank t1 = rank t2 then skewLink (xp, x, t1, t2)::rest
+    else NODE (0, xp, x, [], [])::ts
+    | insert (xp, x, ts) = NODE (0, xp, x, [], [])::ts
+  fun merge (ts1, ts2) = mergeTrees (normalize ts1, normalize ts2)
+
+  fun removeMinTree [] = raise EMPTY
+    | removeMinTree [t] = (t, [])
+    | removeMinTree (t::ts) = 
+    let val (t', ts') = removeMinTree ts
+    in if Priority.leq (priority t, priority t') then (t, ts)
+       else (t', t::ts') end
+
+  fun findMin ts = let val (t, _) = removeMinTree ts in root t end
+  fun deleteMin ts =
+    let
+      val (NODE (_, xp, x, xs, ts1), ts2) = removeMinTree ts
+      fun insertAll ([], ts) = ts
+        | insertAll ((xp, x)::xs, ts) = insert (xp, x, ts)
+    in
+      insertAll (xs, merge (rev ts1, ts2))
+    end
+end
+
+functor Bootstrap' (PrimH : HEAPWITHINFO) : HEAPWITHINFO =
+struct
+  type Priority = PrimH.Priority
+
+  datatype 'a T = E | H of Priority.T * 'a * 'a T PrimH.Heap
+  type 'a Heap = 'a T
+
+  val empty = E
+  fun isEmpty E = true | isEmpty _ = false
+
+  fun merge (E, h) = h
+    | merge (h, E) = h
+    | merge (h1 as H (xp, x, p1), h2 as H (yp, y, p2)) =
+    if Priority.leq (xp, yp) then H (xp, x, PrimH.insert (h2, p1))
+    else H (yp, y, PrimH.insert (h1, p2))
+  fun insert (xp, x, h) = merge (H (xp, x, PrimH.empty), h)
+
+  fun findMin E = raise EMPTY
+    | findMin (H (xp, x, _)) = (xp, x)
+  fun deleteMin E = raise EMPTY
+    | deleteMin (H (xp, x, p)) =
+    if PrimH.isEmpty p then E
+    else
+      let
+        val (H (yp, y, p1)) = PrimH.findMin p
+        val p2 = PrimH.deleteMin p
+      in H (yp, y, PrimH.merge (p1, p2)) end
+end
+
