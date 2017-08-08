@@ -509,3 +509,53 @@ struct
       in H (yp, y, PrimH.merge (p1, p2)) end
 end
 
+(** 10.3 Bootstrapping To Aggregate Types **)
+
+signature FINITEMAP =
+sig
+  type Key
+  type 'a Map
+
+  val empty : 'a Map
+  val bind : Key * 'a * 'a Map -> 'a Map
+  val lookup : Key * 'a Map -> 'a
+end
+
+functor Trie (M : FINITEMAP) : FINITEMAP =
+struct
+  type Key = M.Key list
+
+  datatype 'a Map = TRIE of 'a option * 'a Map M.Map
+
+  val empty = TRIE (NONE, M.empty)
+
+  fun lookup ([], TRIE (NONE, m)) = raise NOTFOUND
+    | lookup ([], TRIE (SOME x, m)) = x
+    | lookup (k::ks, TRIE (v, m)) = lookup (ks, M.lookup (k, m))
+
+  fun bind ([], x, TRIE (_, m)) = TRIE (SOME x, m)
+    | bind (k::ks, x, TRIE (v, m)) =
+    let
+      val t = M.lookup (k, m) handle NOTFOUND => empty
+      val t' = bind (ks, x, t)
+    in TRIE (v, M.bind (k, t', m)) end
+end
+
+(* Exercise 10.9 *)
+functor Trie10_9 (M : FINITEMAP) : FINITEMAP =
+struct
+  type Key = M.Key list
+
+  datatype 'a Map = ENTRY of 'a | TRIE of 'a Map M.Map
+
+  val empty = TRIE M.empty
+
+  fun lookup ([], ENTRY x) = x
+    | lookup (k::ks, TRIE m) = lookup (ks, M.lookup (k, m))
+
+  fun bind ([k], x, TRIE m) = TRIE (M.bind (k, ENTRY x, m))
+    | bind (k::ks, x, TRIE m) =
+    let val t = M.lookup (k, m) handle NOTFOUND => empty
+    in TRIE (M.bind (k, bind (ks, x, t), m)) end
+end
+
