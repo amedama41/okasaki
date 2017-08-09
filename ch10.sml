@@ -603,3 +603,22 @@ struct
     in aux ([], k, x, m) end
 end
 
+(* Exercise 10.11 *)
+functor HashTable (structure Approx : FINITEMAP
+                   structure Exact : FINITEMAP
+                   val hash : Exact.Key -> Approx.Key) : FINITEMAP =
+struct
+  type Key = Exact.Key
+  type 'a Map = 'a Exact.Map Approx.Map
+
+  val empty = Approx.empty
+
+  fun lookup (k, m) = Exact.lookup (k, Approx.lookup (hash k, m))
+
+  fun bind (k, x, m) =
+    let
+      val h = hash k
+      val em = Approx.lookup (h, m) handle NOTFOUND => Exact.empty
+    in Approx.bind (h, Exact.bind (k, x, em)) end
+end
+
