@@ -559,3 +559,47 @@ struct
     in TRIE (M.bind (k, bind (ks, x, t), m)) end
 end
 
+(* Exercise 10.10 *)
+functor Trie10_10 (M : FINITEMAP) : FINITEMAP =
+struct
+  type Key = M.Key list
+
+  datatype 'a Map = TRIE of M.Key list * 'a option * 'a Map M.Map
+
+  val empty = TRIE ([], NONE, M.empty)
+
+  fun eq (k1, k2) =
+    let
+      val v = M.lookup (k1, M.bind (k2, true, M.empty))
+      handle NOTFOUND => false
+    in v end
+
+  fun lookup ([], TRIE ([], SOME x, m)) = x
+    | lookup ([], TRIE (p, v, m)) = raise NOTFOUND
+    | lookup (k::ks, TRIE ([], v, m)) = lookup (ks, M.lookup (k, m))
+    | lookup (k, TRIE (p, v, m)) =
+    let
+      fun removePrefix (k, []) = (k, [])
+        | removePrefix ([], p) = ([], p)
+        | removePrefix (k::ks, p::ps) =
+        if eq (k, p) then removePrefix (ks, ps) else (ks, ps)
+      val (k', p') = removePrefix (k, p)
+    in if null p' then lookup (k', TRIE ([], v, m)) else raise NOTFOUND end
+
+  fun bind (k, x, m) =
+    let
+      fun aux (c, [], x, TRIE ([], v, m)) = TRIE (rev c, SOME x, m)
+        | aux (c, [], x, TRIE (p::ps, v, m)) =
+        TRIE (rev c, SOME x, M.bind (p, TRIE (ps, v, m), M.empty))
+        | aux (c, k::ks, TRIE ([], v, m)) =
+        let
+          val t = aux ([], ks, x, M.lookup (k, m))
+          handle NOTFOUND => TRIE (ks, SOME x, M.empty)
+        in TRIE (rev c, v, M.bind (k, t, m)) end
+        | aux (c, k::ks, x, TRIE (p::ps, v, m)) =
+        if eq (k, p) then aux (k::c, ks, x, TRIE (ps, v, m))
+        else TRIE (rev c, NONE,
+          M.bind (k, TRIE (ks, SOME x, M.bind (p, TRIE (ps, v, m), M.empty))))
+    in aux ([], k, x, m) end
+end
+
