@@ -622,3 +622,65 @@ struct
     in Approx.bind (h, Exact.bind (k, x, em)) end
 end
 
+datatype 'a Tree = E | T of 'a * 'a Tree * 'a Tree
+
+functor TrieOfTrees (M : FINITEMAP) : FINITEMAP
+struct
+  type Key = M.Key Tree
+
+  datatype 'a Map = TRIE of 'a option * 'a Map Map M.Map
+
+  val empty = TRIE (NONE, M.empty)
+
+  fun lookup (E, TRIE (NONE, m)) = raise NOTFOUND
+    | lookup (E, TRIE (SOME x, m)) = x
+    | lookup (T (k, a, b), TRIE (v, m)) =
+    lookup (b, lookup (a, M.lookup (k, m)))
+
+  fun bind (E, x, TRIE (_, m)) = TRIE (SOME x, m)
+    | bind (T (k, a, b), x, TRIE (v, m)) =
+    let
+      val tt = M.lookup (k, m) handle NOTFOUND => empty
+      val t = lookup (a, tt) handle NOTFOUND => empty
+      val t' = bind (b, x, t)
+      val tt' = bind (a, t', tt)
+    in TRIE (v, M.bind (k, tt', m)) end
+end
+
+(* Exercise 10.12 *)
+functor TrieOfTrees10_12 (M : FINITEMAP) : FINITEMAP =
+struct
+  type Key = M.Key Tree
+
+  datatype 'a Map = TRIE of 'a EM option * 'a Map M.Map
+  and 'a EM = ELEM of 'a | MAP of 'a Map
+
+  val empty = TRIE (NONE, M.empty)
+
+  fun lookupMap (E, TRIE (NONE, m)) = raise NOTFOUND
+    | lookupMap (E, TRIE (SOME (MAP x), m)) = x
+    | lookupMap (T (k, a, b), TRIE (v, m)) =
+    lookupMap (a, M.lookup (k, v))
+  fun lookup (E, TRIE (NONE, m)) = raise NOTFOUND
+    | lookup (E, TRIE (SOME (ELEM x), m)) = x
+    | lookup (T (k, a, b), TRIE (v, m)) =
+    lookup (b, lookupMap (a, M.lookup (k, m)))
+
+  fun bindMap (E, x, TRIE (_, m)) = TRIE (SOME (MAP x), m)
+    | bindMap (T (k, a, b), x, TRIE (v, m)) =
+    let
+      val tt = M.lookup (k, m) handle NOTFOUND => empty
+      val t = lookupMap (a, tt) handle NOTFOUND => empty
+      val t' = bindMap (b, x, t)
+      val tt' = bindMap (a, t', tt)
+    in TRIE (v, M.bind (k, tt', m)) end
+  fun bind (E, TRIE (_, m)) = TRIE (SOME (ELEM x), m)
+    | bind (T (k, a, b), x, TRIE (v, m)) =
+    let
+      val tt = M.lookup (k, m) handle NOTFOUND => empty
+      val t = lookupMap (a, tt) handle NOTFOUND => empty
+      val t' = bind (b, x, t)
+      val tt' = bindMap (a, t', tt)
+    in TRIE (v, M.bind (k, tt', m)) end
+end
+
