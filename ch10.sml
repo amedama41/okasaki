@@ -684,3 +684,40 @@ struct
     in TRIE (v, M.bind (k, tt', m)) end
 end
 
+(* Exercise 10.13 *)
+datatype 'a Tree = T of 'a * 'a Tree list
+
+functor TrieOfTreeList (M : FINITEMAP) : FINITEMAP =
+struct
+  type Key = M.Key Tree
+
+  datatype 'a Map = TRIE of 'a option * 'a Map LMap M.Map
+  and 'a LMap = LTRIE of 'a option * 'a LMap Map
+  (** datatype 'a Map = TRIE of 'a option * 'a Map M.Map
+    *                 | LTRIE of 'a option * 'a Map
+    * and 'a EM = ELEM of 'a | MAP of 'a Map
+    * *)
+
+  val empty = TRIE (NONE, M.empty)
+
+  fun lookupList ([], LTRIE (NONE, m)) = raise NOTFOUND
+    | lookupList ([], LTRIE (SOME x, m)) = x
+    | lookupList (t::ts, LTRIE (v, m)) = lookupList (ts, lookup (t, m))
+  and lookup (T (k, ts), TRIE (v, m)) =
+    let val (TRIE (v', m')) = lookupList (ts, M.lookup (k, m))
+    in case v' of SOME x => x | NONE => raise NOTFOUND end
+
+  fun bindList ([], x, LTRIE (v, m)) = LTRIE (SOME x, m)
+    | bindList (t::ts, x, LTRIE (v, m)) =
+    let
+      val lm = lookup (t, m) handle NOTFOUND => LTRIE (NONE, empty)
+      val lm' = bindList (ts, x, lm)
+    in LTRIE (v, bind (t, lm', m)) end
+  and bind (T (k, ts), x, TRIE (v, m)) =
+    let
+      val lm = M.lookup (k, m) handle NOTFOUND => LTRIE (NONE, empty)
+      val (TRIE (_, m')) = lookupList (ts, lm) handle NOTFOUND => empty
+      val lm' = bindList (ts, TRIE (SOME x, m'), lm)
+    in TRIE (v, M.bind (k, lm', m)) end
+end
+
