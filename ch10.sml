@@ -721,3 +721,37 @@ struct
     in TRIE (v, M.bind (k, lm', m)) end
 end
 
+(* Exercise 10.14 *)
+functor ProductMap (M1: FINITEMAP) (M2 : FINITEMAP) : FINITEMAP =
+struct
+  type Key = M1.Key * M2.Key
+
+  datatype 'a Map = TRIE of 'a M2.Map M1.Map
+
+  val empty = M1.empty
+
+  fun lookup ((k1, k2), TRIE m) = M2.lookup (k2, M1.lookup (k1, m))
+
+  fun bind ((k1, k2), x, TRIE m) =
+    let
+      val m2 = M1.lookup (k1, m)
+      val m2' = M2.bind (k2, x, m)
+    in TRIE (M1.bind (k1, m2', m)) end
+end
+
+datatype ('a, 'b) Sum = LEFT of 'a | RIGHT of 'b
+functor SumMap (M1 : FINITEMAP) (M2 : FINITEMAP) : FINITEMAP =
+struct
+  type Key = (M1.Key, M2.Key) Sum
+
+  datatype 'a Map = TRIE of 'a M1.Map * 'a M2.Map
+
+  val empty = (M1.empty, M2.empty)
+
+  fun lookup (LEFT k, TRIE (m1, m2)) = M1.lookup (k, m1)
+    | lookup (RIGHT k, TRIE (m1, m2)) = M2.lookup (k, m2)
+
+  fun bind (LEFT k, x, TRIE (m1, m2)) = TRIE (M1.bind (k, x, m1), m2)
+    | bind (RIGHT k, x, TRIE (m1, m2)) = TRIE (m1, M2.bind (k, x, m2))
+end
+
