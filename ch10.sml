@@ -755,3 +755,34 @@ struct
     | bind (RIGHT k, x, TRIE (m1, m2)) = TRIE (m1, M2.bind (k, x, m2))
 end
 
+(* Exercise 10.15 *)
+datatype Exp = VAR of Id | LAM of Id * Exp | APP of Exp * Exp
+structure TrieOfExp : FINITEMAP =
+struct
+  type Key = Exp
+
+  datatype 'a Map = E | TRIE of 'a M.Map * 'a Map M.Map * 'a Map Map
+
+  val empty = E
+
+  fun lookup (exp, E) = raise NOTFOUND
+    | lookup (VAR id, TRIE (m1, m2, m3)) = M.lookup (id, m1)
+    | lookup (LAM (id, exp), TRIE (m1, m2, m3)) =
+    lookup (exp, M.lookup (id, m2))
+    | lookup (APP (exp1, exp2), TRIE (m1, m2, m3)) =
+    lookup (exp2, lookup (exp1, m3))
+
+  fun bind (exp, E) = bind (exp, TRIE (M.empty, M.empty, E))
+    | bind (VAR id, x, TRIE (m1, m2, m3)) = TRIE (M.bind (id, x, m1), m2, m3)
+    | bind (LAM (id, exp), TRIE (m1, m2, m3)) =
+      let
+        val m = M.lookup (id, m2) handle NOTFOUND => empty
+        val m' = bind (exp, x, m)
+      in TRIE (m1, M.bind (id, m', m2), m3) end
+    | bind (APP (exp1, exp2), TRIE (m1, m2, m3)) =
+      let
+        val m = lookup (exp1, m3) handle NOTFOUND => empty
+        val m' = bind (exp2, x, m)
+      in TRIE (m1, m2, bind (exp1, m', m3)) end
+end
+
