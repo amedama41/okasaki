@@ -85,3 +85,56 @@ struct
 
 end
 
+(* Exercise 11.2 *)
+structure ImplicitDeque : DEQUE =
+struct
+  datatype 'a Digit = ZERO | ONE of 'a | TWO of 'a * 'a | THREE of 'a * 'a * 'a
+  datatype 'a Queue = SHALLOW of 'a Digit
+                    | DEEP of 'a Digit * ('a * 'a) Queue susp * 'a Digit
+
+  val empty = SHALLOW ZERO
+  fun isEmpty (SHALLOW ZERO) = true | isEmpty _ = false
+
+  fun digitToQueue (ONE x) = SHALLOW (ONE x)
+    | digitToQueue (TWO (x, y)) = DEEP (ONE x, $ empty, ONE y)
+    | digitToQueue (THREE (x, y, z)) = DEEP (TWO (x, y), $ empty, ONE z)
+
+  fun cons (x, SHALLOW ZERO) = SHALLOW (ONE x)
+    | cons (x, SHALLOW (ONE y)) = DEEP (ONE x, $ empty, ONE y)
+    | cons (x, DEEP (ONE y, m, r)) = DEEP (TWO (x, y), m, r)
+    | cons (x, DEEP (TWO (y, z), m, r)) = DEEP (THREE (x, y, z), m, r)
+    | cons (x, DEEP (THREE (y, a, b), m, r)) =
+    DEEP (TWO (x, y), $ cons ((a, b), force m), r)
+  fun head (SHALLOW ZERO) = raise EMPTY
+    | head (SHALLOW (ONE x)) = x
+    | head (DEEP (ONE x, m, r)) = x
+    | head (DEEP (TWO (x, y), m, r)) = x
+    | head (DEEP (THREE (x, y, z), m, r)) = x
+  fun tail (SHALLOW ZERO) = raise EMPTY
+    | tail (SHALLOW (ONE x)) = SHALLOW ZERO
+    | tail (DEEP (TWO (x, y), m, r)) = DEEP (ONE y, m, r)
+    | tail (DEEP (THREE (x, y, z), m, r)) = DEEP (TWO (y, z), m, r)
+    | tail (DEEP (ONE x, $ q, r)) =
+    if isEmpty q then digitToQueue r
+    else let val (y, z) = head q in DEEP (TWO (y, z), $ tail q, r) end
+
+  fun snoc (SHALLOW, x) = SHALLOW (ONE x)
+    | snoc (SHALLOW (ONE x), y) = DEEP (ONE x, $ empty, ONE y)
+    | snoc (DEEP (f, m, ONE x), y) = DEEP (f, m, TWO (x, y))
+    | snoc (DEEP (f, m, TWO (x, y)), z) = DEEP (f, m, THREE (x, y, z))
+    | snoc (DEEP (f, m, THREE (a, b, x)), y) =
+    DEEP (f, $ snoc (force m, (a, b)), TWO (x, y))
+  fun last (SHALLOW ZERO) = raise EMPTY
+    | last (SHALLOW (ONE x)) = x
+    | last (DEEP (f, m, ONE x)) = x
+    | last (DEEP (f, m, TWO (x, y))) = y
+    | last (DEEP (f, m, THREE (x, y, z))) = z
+  fun init (SHALLOW ZERO) = raise EMPTY
+    | init (SHALLOW (ONE x)) = SHALLOW ZERO
+    | init (DEEP (f, m, TWO (x, y))) = DEEP (f, m, ONE x)
+    | init (DEEP (f, m, THREE (x, y, z))) = DEEP (f, m, TWO (x, y))
+    | init (DEEP (f, $ q, ONE z)) =
+    if isEmpty q then digitToQueue f
+    else let val (x, y) = last q in DEEP (f, $ tail q, TWO (x, y)) end
+end
+
