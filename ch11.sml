@@ -138,3 +138,98 @@ struct
     else let val (x, y) = last q in DEEP (f, $ tail q, TWO (x, y)) end
 end
 
+(** 11.2 Catenable Double-Ended Queue **)
+
+signature CATENABLEDEQUE =
+sig
+  type 'a Cat
+
+  val empty : 'a Cat
+  val isEmpty : 'a Cat -> bool
+
+  val cons : 'a * 'a Cat -> 'a Cat
+  val head : 'a Cat -> 'a
+  val tail : 'a Cat -> 'a Cat
+
+  val snoc : 'a Cat * 'a -> 'a Cat
+  val last : 'a Cat -> 'a
+  val init : 'a Cat -> 'a Cat
+
+  val ++ : 'a Cat * 'a Cat -> 'a Cat
+end
+
+(* Exercise 11.3 *)
+(** Hypothesize m is assigned at most 2 debts when |f| > 2 and |r| > 2, at most
+  * 1 debt when either |f| = 2 or |r| = 2, or 0 debt when |f| = 2 and |r| = 2.
+  *
+  * tail: If |f| > 2, the debt upper limit may be decreased. Then 1 debt is
+  * repaid or delegated to higher. Otherwise, when |r| = 2, m has no debt. tail
+  * is received 1 debt from recursive tail and created other 1 debt for new m.
+  * Because the new m is enable to be assigned to 1 debt, either 1 debt is
+  * delegated to the higher.
+  * When |r| > 2, m has 1 debt. So the 1 debt must be repaid or delegated. tail
+  * is received 1 debt from recursive tail and created other 1 debt for new m.
+  * Because the new m is enable to be assigned at most 2 debts, some 1 debt is
+  * delegated to the higher.
+  * Therefore tail repaid 1 debt and unshared cost is O(1), the amortized cost
+  * is O(1).
+  * The proof for init is same as tail.
+  *
+  * *)
+
+functor SimpleCatenableDeque (D: DEQUE) : CATENABLEDEQUE =
+struct
+  datatype 'a Cat = SHALLOW of 'a D.Queue
+                  | DEEP of 'a D.Queue * 'a D.Queue Cat susp * 'a D.Queue
+
+  fun tooSmall d = D.isEmpty d orelse D.isEmpty (D.tail d)
+
+  fun dappendL (d1, d2) =
+    if D.isEmpty d1 then d2 else (D.cons (D.head d1, d2))
+  fun dappendR (d1, d2) =
+    if D.isEmpty d2 then d1 else (D.snoc (d1, D.head d2))
+
+  val empty = SHALLOW D.empty
+  fun isEmpty (SHALLOW d) = D.isEmpty d
+    | isEmpty _ = false
+
+  fun cons (x, SHALLOW d) = SHALLOW (D.cons (x, d))
+    | cons (x, DEEP (f, m, r)) = DEEP (D.cons (x, f), m, r)
+  fun head (SHALLOW d) = D.head d
+    | head (DEEP (f, m, r)) = D.head f
+  fun tail (SHALLOW d) = SHALLOW (D.tail d)
+    | tail (DEEP (f, m, r)) =
+    let val f' = D.tail f
+    in
+      if not (tooSmall f') then DEEP (f', m, r)
+      else if isEmpty (force m) then SHALLOW (dappendL (f', r))
+      else DEEP (dappendL (f', head (force m)), $ tail (force m), r)
+    end
+
+  fun snoc (SHALLOW d, x) = SHALLOW (D.snoc (d, x))
+    | snoc (DEEP (f, m, r), x) = DEEP (f, m, D.snoc (r, x))
+  fun last (SHALLOW d) = D.last d
+    | last (DEEP (f, m, r)) = D.last r
+  fun init (SHALLOW d) = SHALLOW (D.init d)
+    | last (DEEP (f, m, r)) =
+    let val r' = D.init r
+    in
+      if not (tooSmall r') then DEEP (f, m, r')
+      else if isEmpty (force m) then SHALLOW (dappendR (f, r'))
+      else DEEP (f, init (force m), dappendR (last (force m), r'))
+    end
+
+  fun (SHALLOW d1) ++ (SHALLOW d2) =
+    if tooSmall d1 then SHALLOW (dappendL (d1, d2))
+    else if tooSmall d2 then SHALLOW (dappendR (d1, d2))
+    else DEEP (d1, $ empty, d2)
+    | (SHALLOW d) ++ (DEEP (f, m, r)) =
+    if tooSmall d then DEEP (dappendL (d, f), m, r)
+    else DEEP (d, $ cons (f, force m), r)
+    | (DEEP (f, m, r)) ++ (SHALLOW d) =
+    if tooSmall d then DEEP (f, m, dappendR (r, d))
+    else DEEP (f, $ sonc (force m, r), d)
+    | (DEEP (f1, m1, r1)) ++ (DEEP (f2, m2, r2)) =
+    DEEP (f1, $ (snoc (force m1, r1) ++ cons (f2, force m2)), r2)
+end
+
